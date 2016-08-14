@@ -21,7 +21,8 @@ object Measures {
     1 - intersection / (xSum + ySum - intersection)
   }
 
-  def nonLinearTransform(y: Double): Double = 1 / (1 - y) - 1
+  def nonLinearTransform1(y: Double): Double = 1 / (1 - y) - 1
+  def nonLinearTransform2(y: Double): Double = Math.pow(y, 10)
 
 }
 
@@ -29,7 +30,7 @@ object Measures {
 object ElementMeasures {
   def weightedJaccardDisatnce(x: WeightedSetElement, y: WeightedSetElement): Double = {
     val res = Measures.weightedJaccardDisatnce(x.features, y.features)
-    Measures.nonLinearTransform(res)
+    Measures.nonLinearTransform1(res)
   }
 
   def baseElementDistance(x: WeightedSetElement, y: BaseElement): Double = {
