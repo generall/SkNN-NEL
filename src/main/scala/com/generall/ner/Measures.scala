@@ -22,7 +22,7 @@ object Measures {
   }
 
   def nonLinearTransform1(y: Double): Double = 1 / (1 - y) - 1
-  def nonLinearTransform2(y: Double): Double = Math.pow(y, 10)
+  def nonLinearTransform2(y: Double): Double = Math.pow(y, 10) // TODO: hyper parameter
 
 }
 
