@@ -24,7 +24,7 @@ class OntologyElement(conceptUrl: String) extends WeightedSetElement{
 object OntologyElement{
   val factory = new TraversalFactory(GraphClient)
 
-  val threshold = 0.1
+  val threshold = 0.2 // TODO: hyper parameter
 
   def constructConcept(concept: Concept, _threshold : Double = threshold): Concept = {
     val traversal = factory.constructConcept(concept.categories, _threshold)

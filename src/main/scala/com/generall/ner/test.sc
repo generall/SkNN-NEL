@@ -18,3 +18,6 @@ l1.isInstanceOf[List[Base]]
 
 l3.isInstanceOf[List[Der]]
 l3.isInstanceOf[List[Base]]
+
+
+1.0 / 0.0 == Double.PositiveInfinity

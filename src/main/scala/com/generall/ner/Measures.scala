@@ -21,13 +21,15 @@ object Measures {
     1 - intersection / (xSum + ySum - intersection)
   }
 
+  def nonLinearTransform(y: Double): Double = 1 / (1 - y) - 1
+
 }
 
 
 object ElementMeasures {
-  def weightedJaccardDisatnce(x: WeightedSetElement, y:WeightedSetElement): Double = {
+  def weightedJaccardDisatnce(x: WeightedSetElement, y: WeightedSetElement): Double = {
     val res = Measures.weightedJaccardDisatnce(x.features, y.features)
-    res
+    Measures.nonLinearTransform(res)
   }
 
   def baseElementDistance(x: WeightedSetElement, y: BaseElement): Double = {
