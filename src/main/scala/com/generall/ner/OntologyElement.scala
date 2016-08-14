@@ -6,8 +6,8 @@ import com.generall.ontology.structure.{Concept, TraversalFactory}
 /**
   * Created by generall on 13.08.16.
   */
-class OntologyElement(conceptUrl: String) extends WeightedSetElement{
-  override var label: String = conceptUrl
+class OntologyElement(conceptUrl: String, _label: String = null) extends WeightedSetElement{
+  override var label: String = if(_label == null) conceptUrl else _label
   var concept: Concept = OntologyElement.constructConcept(new Concept(conceptUrl))
 
   def features(_threshold : Double): Map[String, Double] = {

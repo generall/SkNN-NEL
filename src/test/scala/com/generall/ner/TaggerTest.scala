@@ -66,11 +66,14 @@ class TaggerTest extends FunSuite {
     val resFilm = sknn.tag(test1, 1)( (_, _) => true)
     val resShip = sknn.tag(test2, 1)( (_, _) => true)
 
-    println("resFilm: ")
-    resFilm.head._1.foreach(node => println(node.label))
+    val recoveredResultFilm = RecoverConcept.recover(test1, model.initNode, resFilm.head._1)
+    val recoveredResultShip = RecoverConcept.recover(test2, model.initNode, resShip.head._1)
 
-    println("resShip: ")
-    resShip.head._1.foreach(node => println(node.label))
+    println("recoveredResultFilm: ")
+    recoveredResultFilm.foreach(node => println(node.label))
+
+    println("recoveredResultShip: ")
+    recoveredResultShip.foreach(node => println(node.label))
 
   }
 
