@@ -1,5 +1,5 @@
 # SkNN-NER
-Implementation of named entity recognition using SkNN algorithm
+Implementation of named entity disambiguation and linking with usage of SkNN algorithm
 
 DBPedia categories hierarchy used as words representation
 
