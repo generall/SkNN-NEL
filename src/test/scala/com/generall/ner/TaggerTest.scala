@@ -1,5 +1,6 @@
 package com.generall.ner
 
+import com.generall.ner.elements._
 import com.generall.sknn.SkNN
 import com.generall.sknn.model.storage.PlainAverageStorage
 import com.generall.sknn.model.{SkNNNodeImpl, SkNNNode, Model}
@@ -10,6 +11,28 @@ import org.scalatest.FunSuite
   * Created by generall on 13.08.16.
   */
 class TaggerTest extends FunSuite {
+
+  val tarkovsky = new OntologyElement("http://dbpedia.org/resource/Andrei_Tarkovsky")
+  val stalker = new OntologyElement("http://dbpedia.org/resource/Stalker_(1979_film)")
+
+  val quayle = new OntologyElement("http://dbpedia.org/resource/Edward_Quayle_(sea_captain)")
+  val mona = new OntologyElement("http://dbpedia.org/resource/SS_Mona_(1832)")
+
+  val cameron = new OntologyElement("http://dbpedia.org/resource/James_Cameron")
+  val smith = new OntologyElement("http://dbpedia.org/resource/Edward_Smith_(sea_captain)")
+
+  val titanic = new MultiElement[OntologyElement]
+
+  val titanic_film = new OntologyElement("http://dbpedia.org/resource/Titanic_(1997_film)")
+  val titanic_ship = new OntologyElement("http://dbpedia.org/resource/RMS_Titanic")
+
+  titanic.addElement(titanic_film)
+  titanic.addElement(titanic_ship)
+
+  val ruled = new POSElement(POSTag("ruled", "verb"))
+  val command = new POSElement(POSTag("command", "verb"))
+  val made = new POSElement(POSTag("made", "verb"))
+  val filmed = new POSElement(POSTag("filmed", "verb"))
 
 
   test("taggSentance"){
@@ -25,23 +48,6 @@ class TaggerTest extends FunSuite {
       Edward Smith ruled Titanic(Ship or Film)
 
      */
-
-    val tarkovsky = new OntologyElement("http://dbpedia.org/resource/Andrei_Tarkovsky")
-    val stalker = new OntologyElement("http://dbpedia.org/resource/Stalker_(1979_film)")
-
-    val quayle = new OntologyElement("http://dbpedia.org/resource/Edward_Quayle_(sea_captain)")
-    val mona = new OntologyElement("http://dbpedia.org/resource/SS_Mona_(1832)")
-
-    val cameron = new OntologyElement("http://dbpedia.org/resource/James_Cameron")
-    val smith = new OntologyElement("http://dbpedia.org/resource/Edward_Smith_(sea_captain)")
-
-    val titanic = new MultiElement[OntologyElement]
-
-    val titanic_film = new OntologyElement("http://dbpedia.org/resource/Titanic_(1997_film)")
-    val titanic_ship = new OntologyElement("http://dbpedia.org/resource/RMS_Titanic")
-
-    titanic.addElement(titanic_film)
-    titanic.addElement(titanic_ship)
 
     val training = List(
       List(tarkovsky, stalker),
@@ -77,6 +83,43 @@ class TaggerTest extends FunSuite {
 
   }
 
+  test("taggSentanceContextSize3"){
+    val training = List(
+      ContextElementConverter.convert(List(tarkovsky, filmed, stalker), 3),
+      ContextElementConverter.convert(List(quayle, command, mona), 3)
+    )
+
+    val test1 = ContextElementConverter.convert(List(cameron, made, titanic), 3)
+    val test2 = ContextElementConverter.convert(List(smith, ruled, titanic), 3)
+
+
+    val model = new Model[BaseElement, SkNNNode[BaseElement]]((label) => {
+      new SkNNNodeImpl[BaseElement, PlainAverageStorage[BaseElement]](label, 1)( () => {
+        new PlainAverageStorage[BaseElement](ElementMeasures.baseElementDistance)
+      })
+    })
+
+    training.foreach(seq => model.processSequenceImpl(seq)(onto => List((onto.label, onto)) ))
+
+    val sknn = new SkNN[BaseElement, SkNNNode[BaseElement]](model)
+
+    val resFilm = sknn.tag(test1, 1)( (_, _) => true)
+    val resShip = sknn.tag(test2, 1)( (_, _) => true)
+
+    val recoveredResultFilm = RecoverConcept.recover(test1, model.initNode, resFilm.head._1)
+    val recoveredResultShip = RecoverConcept.recover(test2, model.initNode, resShip.head._1)
+
+    println("recoveredResultFilm: ")
+    recoveredResultFilm.foreach(node => println(node.label))
+
+    println("recoveredResultShip: ")
+    recoveredResultShip.foreach(node => println(node.label))
+
+  }
+
+
+
+
   def printDist(conceptUrl1: String, conceptUrl2: String)= {
     val concept1 = new OntologyElement(conceptUrl1)
     val concept2 = new OntologyElement(conceptUrl2)
@@ -85,7 +128,12 @@ class TaggerTest extends FunSuite {
 
     println(s"$conceptUrl1 vs $conceptUrl2 = $dist")
   }
+
   test("testConceptDistance") {
+
+
+    printDist("http://dbpedia.org/resource/Edward_Quayle_(sea_captain)", "http://dbpedia.org/resource/Edward_Smith_(sea_captain)")
+
 
     printDist("http://dbpedia.org/resource/James_Cameron", "http://dbpedia.org/resource/Edward_Quayle_(sea_captain)")
     printDist("http://dbpedia.org/resource/RMS_Titanic", "http://dbpedia.org/resource/SS_Mona_(1832)")

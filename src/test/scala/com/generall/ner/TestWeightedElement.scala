@@ -1,5 +1,7 @@
 package com.generall.ner
 
+import com.generall.ner.elements.WeightedSetElement
+
 /**
   * Created by generall on 14.08.16.
   */

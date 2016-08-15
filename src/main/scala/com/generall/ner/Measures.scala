@@ -1,5 +1,6 @@
 package com.generall.ner
 
+import com.generall.ner.elements._
 import com.generall.sknn.model.storage.elements.BaseElement
 
 /**
@@ -13,7 +14,8 @@ object Measures {
   }
 
   def weightedJaccardDisatnce(x: Map[String, Double], y: Map[String, Double]): Double = {
-
+    if (x.isEmpty && y.isEmpty)
+      return 0.0 // prevent 0 by 0 division, 2 empty sets actually equals to each other
     val intersection = weightedIntersection(x, y)
     val xSum = x.foldLeft(0.0)((sum, x) => sum + x._2)
     val ySum = y.foldLeft(0.0)((sum, x) => sum + x._2)
@@ -22,6 +24,7 @@ object Measures {
   }
 
   def nonLinearTransform1(y: Double): Double = 1 / (1 - y) - 1
+
   def nonLinearTransform2(y: Double): Double = Math.pow(y, 10) // TODO: hyper parameter
 
 }
@@ -35,6 +38,8 @@ object ElementMeasures {
 
   def baseElementDistance(x: WeightedSetElement, y: BaseElement): Double = {
     y match {
+      case contextElement: ContextElement =>  throw new RuntimeException("unable to match context with non-context")
+      case NullElement => weightedJaccardDisatnce(x, EmptyWeightedElement)
       case yWSet: WeightedSetElement => weightedJaccardDisatnce(x, yWSet)
       case yMulti: MultiElement[WeightedSetElement] => yMulti.subElements.map(yWSet => weightedJaccardDisatnce(x, yWSet)).min
     }
@@ -42,6 +47,15 @@ object ElementMeasures {
 
   def baseElementDistance(x: BaseElement, y: BaseElement): Double = {
     x match {
+      case xContextElement: ContextElement => y match {
+        case yContextElement: ContextElement => {
+          assert(yContextElement.context.size == xContextElement.context.size)
+          yContextElement.context.zip(xContextElement.context)
+            .foldLeft(0.0)((sum, pair) => sum + baseElementDistance(pair._1, pair._2))
+        }
+        case _ => throw new RuntimeException("unable to match context with non-context")
+      }
+      case NullElement => baseElementDistance(EmptyWeightedElement, y)
       case xWSet: WeightedSetElement => baseElementDistance(xWSet, y)
       case xMulti: MultiElement[WeightedSetElement] => xMulti.subElements.map(xWSet => baseElementDistance(xWSet, y)).min
     }

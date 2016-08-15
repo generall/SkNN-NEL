@@ -1,4 +1,4 @@
-package com.generall.ner
+package com.generall.ner.elements
 
 import com.generall.sknn.model.storage.elements.BaseElement
 

@@ -1,4 +1,4 @@
-package com.generall.ner
+package com.generall.ner.elements
 
 /**
   * Created by generall on 13.08.16.

@@ -1,19 +1,35 @@
 package com.generall.ner
 
+import com.generall.ner.elements.{ContextElementConverter, ContextElement, MultiElement}
 import com.generall.sknn.model.SkNNNode
-import com.generall.sknn.model.storage.elements.BaseElement
+import com.generall.sknn.model.storage.elements.{BaseElement, SetElement}
 
 /**
   * Created by generall on 14.08.16.
   */
 object RecoverConcept {
 
-  def recover(seq: List[BaseElement], currentNode: SkNNNode[BaseElement], nodes: List[SkNNNode[BaseElement]] ): List[OntologyElement] = {
+  def matchElement(element: BaseElement, node: SkNNNode[BaseElement], nextNode: SkNNNode[BaseElement]): BaseElement = {
+
+    element match {
+      case setElement: SetElement => setElement
+      case multiElement: MultiElement[BaseElement] =>
+        multiElement.subElements.minBy(el => node.calcDistance(el, nextNode))
+    }
+  }
+
+  def recover(seq: List[BaseElement], currentNode: SkNNNode[BaseElement], nodes: List[SkNNNode[BaseElement]]): List[BaseElement] = {
     seq match {
       case head :: tail => head match {
-        case ontologyElement: OntologyElement  => ontologyElement :: recover(tail, nodes.head, nodes.tail )
-        case multiElement: MultiElement[OntologyElement] =>
-          multiElement.subElements.minBy(el => currentNode.calcDistance(el, nodes.head)):: recover(tail, nodes.head, nodes.tail )
+        case contextElement: ContextElement =>
+          val variants = ContextElementConverter.makeVariants(contextElement)
+          (if (variants.size == 1)
+            contextElement
+          else
+            variants.minBy(contextEl => currentNode.calcDistance(contextEl, nodes.head))
+            ) :: recover(tail, nodes.head, nodes.tail)
+        case baseElement: BaseElement =>
+          matchElement(baseElement, currentNode, nodes.head) :: recover(tail, nodes.head, nodes.tail)
       }
       case Nil => Nil
     }

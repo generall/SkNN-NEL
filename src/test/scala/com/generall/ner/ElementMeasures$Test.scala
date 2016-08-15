@@ -1,5 +1,6 @@
 package com.generall.ner
 
+import com.generall.ner.elements.MultiElement
 import org.scalatest.FunSuite
 
 /**

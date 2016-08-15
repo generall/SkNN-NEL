@@ -1,5 +1,6 @@
 package com.generall.ner
 
+import com.generall.ner.elements.OntologyElement
 import org.scalatest.FunSuite
 
 /**
