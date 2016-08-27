@@ -83,14 +83,21 @@ class TaggerTest extends FunSuite {
 
   }
 
+  /**
+    * Test of context concepts
+    */
+
   test("taggSentanceContextSize3"){
+
+    val contextSize = 5
+
     val training = List(
-      ContextElementConverter.convert(List(tarkovsky, filmed, stalker), 3),
-      ContextElementConverter.convert(List(quayle, command, mona), 3)
+      ContextElementConverter.convert(List(tarkovsky, filmed, stalker), contextSize),
+      ContextElementConverter.convert(List(quayle, command, mona), contextSize)
     )
 
-    val test1 = ContextElementConverter.convert(List(cameron, made, titanic), 3)
-    val test2 = ContextElementConverter.convert(List(smith, ruled, titanic), 3)
+    val test1 = ContextElementConverter.convert(List(cameron, made, titanic), contextSize)
+    val test2 = ContextElementConverter.convert(List(smith, ruled, titanic), contextSize)
 
 
     val model = new Model[BaseElement, SkNNNode[BaseElement]]((label) => {
@@ -105,6 +112,16 @@ class TaggerTest extends FunSuite {
 
     val resFilm = sknn.tag(test1, 1)( (_, _) => true)
     val resShip = sknn.tag(test2, 1)( (_, _) => true)
+
+    println("resFilm: ")
+    resFilm.head._1.foreach(node => println(node.label))
+
+    println("resShip: ")
+    resShip.head._1.foreach(node => println(node.label))
+
+    println("")
+    println(" ---------- ")
+    println("")
 
     val recoveredResultFilm = RecoverConcept.recover(test1, model.initNode, resFilm.head._1)
     val recoveredResultShip = RecoverConcept.recover(test2, model.initNode, resShip.head._1)
@@ -142,7 +159,6 @@ class TaggerTest extends FunSuite {
 
     printDist("http://dbpedia.org/resource/James_Cameron", "http://dbpedia.org/resource/Andrei_Tarkovsky")
     printDist("http://dbpedia.org/resource/Titanic_(1997_film)", "http://dbpedia.org/resource/Stalker_(1979_film)")
-
   }
 
 }

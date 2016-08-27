@@ -11,4 +11,7 @@ libraryDependencies += "com.generall" %% "sknn-scala" % "1.0-SNAPSHOT"
 libraryDependencies += "com.generall" %% "ontology" % "1.0-SNAPSHOT"
 
 
+libraryDependencies += "ml.generall" %% "elastic-scala" % "1.0-SNAPSHOT"
+libraryDependencies += "ml.generall" %% "sentence-chunker" % "1.0-SNAPSHOT"
+
 resolvers += Resolver.mavenLocal
