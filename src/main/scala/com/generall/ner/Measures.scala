@@ -23,9 +23,10 @@ object Measures {
     1 - intersection / (xSum + ySum - intersection)
   }
 
+
   def nonLinearTransform1(y: Double): Double = 1 / (1 - y) - 1
 
-  def nonLinearTransform2(y: Double): Double = Math.pow(y, 10) // TODO: hyper parameter
+  def nonLinearTransform2(y: Double): Double = Math.pow(y, 2) // TODO: hyper parameter
 
 }
 
@@ -36,29 +37,43 @@ object ElementMeasures {
     Measures.nonLinearTransform1(res)
   }
 
-  def baseElementDistance(x: WeightedSetElement, y: BaseElement): Double = {
+  def weightedOverlap(x: WeightedSetElement, y: WeightedSetElement): Double  = {
+    val res = Measures.weightedJaccardDisatnce(x.features, y.features)
+    Measures.nonLinearTransform2(res)
+  }
+
+  def weightedDistance(x: WeightedSetElement, y: BaseElement)(measureFunc: (WeightedSetElement, WeightedSetElement) => Double): Double = {
     y match {
       case contextElement: ContextElement =>  throw new RuntimeException("unable to match context with non-context")
-      case NullElement => weightedJaccardDisatnce(x, EmptyWeightedElement)
-      case yWSet: WeightedSetElement => weightedJaccardDisatnce(x, yWSet)
-      case yMulti: MultiElement[WeightedSetElement] => yMulti.subElements.map(yWSet => weightedJaccardDisatnce(x, yWSet)).min
+      case NullElement => measureFunc(x, EmptyWeightedElement)
+      case yWSet: WeightedSetElement => measureFunc(x, yWSet)
+      case yMulti: MultiElement[WeightedSetElement] => yMulti.subElements.map(yWSet => measureFunc(x, yWSet)).min
     }
   }
 
-  def baseElementDistance(x: BaseElement, y: BaseElement): Double = {
+
+  def weightedDistance(x: BaseElement, y: BaseElement)(measureFunc: (WeightedSetElement, WeightedSetElement) => Double): Double = {
     x match {
       case xContextElement: ContextElement => y match {
         case yContextElement: ContextElement => {
           assert(yContextElement.context.size == xContextElement.context.size)
           yContextElement.context.zip(xContextElement.context)
-            .foldLeft(0.0)((sum, pair) => sum + baseElementDistance(pair._1, pair._2))
+            .foldLeft(0.0)((sum, pair) => sum + weightedDistance(pair._1, pair._2)(measureFunc) )
         }
         case _ => throw new RuntimeException("unable to match context with non-context")
       }
-      case NullElement => baseElementDistance(EmptyWeightedElement, y)
-      case xWSet: WeightedSetElement => baseElementDistance(xWSet, y)
-      case xMulti: MultiElement[WeightedSetElement] => xMulti.subElements.map(xWSet => baseElementDistance(xWSet, y)).min
+      case NullElement => weightedDistance(EmptyWeightedElement, y)(measureFunc)
+      case xWSet: WeightedSetElement => weightedDistance(xWSet, y)(measureFunc)
+      case xMulti: MultiElement[WeightedSetElement] => xMulti.subElements.map(xWSet => weightedDistance(xWSet, y)(measureFunc)).min
     }
+  }
+
+  def baseElementDistance(x: BaseElement, y: BaseElement): Double = {
+    weightedDistance(x, y)(weightedJaccardDisatnce)
+  }
+
+  def overlapElementDistance(x: BaseElement, y: BaseElement): Double = {
+    weightedDistance(x, y)(weightedOverlap)
   }
 
 }
