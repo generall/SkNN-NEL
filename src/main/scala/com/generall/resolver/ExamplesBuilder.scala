@@ -23,30 +23,29 @@ object Builder {
         case "NP" => {
           val text = list.map(_._1).mkString(" ")
           val variants = searcher.findMentions(text).stats
-          List(new TrainObject(text, "group", group, variants))
+          List(new TrainObject(list.map(_._1), "group", group, variants))
         }
         case _ =>
           list.map(word => {
             val (token, (pos, chunkTag)) = word
-            new TrainObject(token, pos, chunkTag, Nil)
+            new TrainObject(List(token), pos, chunkTag, Nil)
           })
       }
     }
     })
   }
 
-
   def makePosTrain(groups: List[(String, List[(String, (String, String))])]): List[TrainObject] = {
     groups.flatMap({ case (group, list) => {
       group match {
         case "NP" => {
-          val text = list.map(_._1).mkString(" ")
+          val text = list.map(_._1)
           List(new TrainObject(text, "group", group, Nil))
         }
         case _ =>
           list.map(word => {
             val (token, (pos, chunkTag)) = word
-            new TrainObject(token, pos, chunkTag, Nil)
+            new TrainObject(List(token), pos, chunkTag, Nil)
           })
       }
     }
@@ -63,6 +62,10 @@ class ExamplesBuilder {
   def build(concept: String): List[List[TrainObject]] = {
     val searchRes = searcher.findHref(concept)
     val count = searchRes.size
+
+    FileLogger.logToFile("/tmp/learning.log", concept)
+    FileLogger.logToFile("/tmp/learning.log", "")
+
 
     val conceptVariant = List(ConceptVariant(
       concept = concept,
@@ -90,10 +93,12 @@ class ExamplesBuilder {
           val middlePart = middleChunk.text
           val lastPart = if (lastSents.isEmpty) "" else lastSents(0)
 
+          FileLogger.logToFile("/tmp/learning.log", firstPart ++ " | " ++ middlePart ++ " | " ++ lastPart)
+
           chunker.group(List(firstPart, middlePart, lastPart)) match {
             case List(firstTags, middleTags, lastTags) => {
               Builder.makePosTrain(firstTags) ++
-                List(new TrainObject(middlePart, "group", middleTags.head._1, conceptVariant)) ++
+                List(new TrainObject(List(middlePart), "group", middleTags.head._1, conceptVariant)) ++
                 Builder.makePosTrain(lastTags)
             }
           }

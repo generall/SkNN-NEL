@@ -1,7 +1,7 @@
 package com.generall.resolver
 
-import com.generall.ner.{RecoverConcept, ElementMeasures}
 import com.generall.ner.elements._
+import com.generall.ner.{ElementMeasures, RecoverConcept}
 import com.generall.sknn.SkNN
 import com.generall.sknn.model.storage.PlainAverageStorage
 import com.generall.sknn.model.storage.elements.BaseElement
@@ -9,6 +9,7 @@ import com.generall.sknn.model.{Model, SkNNNode, SkNNNodeImpl}
 import ml.generall.elastic.ConceptVariant
 
 import scala.collection.mutable
+
 
 /**
   * Created by generall on 27.08.16.
@@ -33,13 +34,13 @@ class SentenceAnalizer {
 
   /**
     * Convert train object to SkNN-acceptable elements (construct ontology if needed)
- *
+    *
     * @param obj train object
     * @return sibling of BaseElement
     */
-  def trainingObjectToElement(obj: TrainObject): BaseElement = {
+  def toElement(obj: TrainObject): BaseElement = {
     obj.concepts match {
-      case Nil => new POSElement(POSTag(obj.text, obj.pos))
+      case Nil => new POSElement(POSTag(obj.tokens.mkString(" ") , obj.pos))
       case List(concept) => new OntologyElement(wikiToDbpedia(concept.concept))
       case disambiguation: Iterable[ConceptVariant] => {
         val multi = new MultiElement[OntologyElement]
@@ -51,6 +52,24 @@ class SentenceAnalizer {
       }
     }
   }
+
+  def toBagOfWordsElement(obj: TrainObject): BaseElement = {
+    obj.concepts match {
+      case Nil => new BagOfWordElement(obj.tokens.map(token => {
+        (token, 1.0) // TODO: add TF weighting here
+      }).toMap, obj.tokens.mkString(" "), obj.pos)
+      case List(concept) => new OntologyElement(wikiToDbpedia(concept.concept))
+      case disambiguation: Iterable[ConceptVariant] => {
+        val multi = new MultiElement[OntologyElement]
+        disambiguation
+          .view
+          .map(x => new OntologyElement(wikiToDbpedia(x.concept)))
+          .foreach(multi.addElement)
+        multi
+      }
+    }
+  }
+
 
   def printGraph(model: Model[BaseElement, SkNNNode[BaseElement]]) = {
     val seen = new mutable.HashSet[SkNNNode[BaseElement]]()
@@ -85,42 +104,42 @@ class SentenceAnalizer {
       */
     val conceptsToLearn: List[String] = getConceptsToLearn(objs)
 
-    val target = ContextElementConverter.convert(objs.map(trainingObjectToElement), contextSize)
 
+    println("conceptsToLearn: ")
+    conceptsToLearn.foreach(println)
+
+    val target = ContextElementConverter.convert(objs.map(toBagOfWordsElement), contextSize)
 
     val searchResults = conceptsToLearn.flatMap(exampleBuilder.build)
 
     val trainingSet = searchResults.map(sentSeq => {
-      ContextElementConverter.convert(sentSeq.map(trainingObjectToElement), contextSize)
+      ContextElementConverter.convert(sentSeq.map(toBagOfWordsElement), contextSize)
     })
 
     val model = new Model[BaseElement, SkNNNode[BaseElement]]((label) => {
       new SkNNNodeImpl[BaseElement, PlainAverageStorage[BaseElement]](label, 1)( () => {
-        new PlainAverageStorage[BaseElement](ElementMeasures.overlapElementDistance)
+        new PlainAverageStorage[BaseElement](ElementMeasures.bagOfWordElementDistance)
       })
     })
 
     println(s"trainingSet.size: ${trainingSet.size}")
 
     trainingSet.foreach(seq => model.processSequenceImpl(seq)(onto => List((onto.label, onto)) ))
-    
-    target.foreach(x => println(x.label))
-
 
     val sknn = new SkNN[BaseElement, SkNNNode[BaseElement]](model)
 
 
-    val res = sknn.tag(target, 1)
+    val res = sknn.tag(target, 1)((_, _) => true)
 
     val recoveredResult1 = RecoverConcept.recover(target, model.initNode, res(0)._1)
-    //val recoveredResult2 = RecoverConcept.recover(target, model.initNode, res(1)._1)
-
     println(s"Weight: ${res(0)._2}")
-    objs.zip(recoveredResult1).foreach({ case (obj, node) => println(s"${obj.text} => ${node.label}")})
+    objs.zip(recoveredResult1).foreach({ case (obj, node) => println(s"${obj.tokens.mkString(" ")} => ${node.label}")})
 
-
-//    println(s"Weight: ${res(1)._2}")
-//    objs.zip(recoveredResult2).foreach({ case (obj, node) => println(s"${obj.text} => ${node.label}")})
+    /*
+    val recoveredResult2 = RecoverConcept.recover(target, model.initNode, res(1)._1)
+    println(s"Weight: ${res(1)._2}")
+    objs.zip(recoveredResult2).foreach({ case (obj, node) => println(s"${obj.tokens.mkString(" ")} => ${node.label}")})
+    */
 
   }
 

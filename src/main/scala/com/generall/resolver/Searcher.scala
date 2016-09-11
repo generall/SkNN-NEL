@@ -1,6 +1,6 @@
 package com.generall.resolver
 
-import ml.generall.elastic.MentionSearcher
+import ml.generall.elastic.{MentionSearchResult, MentionSearcher}
 import ml.generall.nlp.OpenNLPChunker
 
 /**
@@ -16,12 +16,12 @@ object Searcher extends MentionSearcher( "192.168.1.44" /* "localhost" */, 9300,
     res
   }
 
-  /*
   override def findMentions(mentionText: String): MentionSearchResult = {
     println(s"Finding mention: $mentionText")
-    super.findMentions(mentionText)
+    val res = super.findMentions(mentionText)
+    println(s"Found: ${res.stats.size}")
+    res
   }
-  */
 
 
 }

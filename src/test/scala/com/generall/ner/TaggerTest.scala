@@ -35,7 +35,7 @@ class TaggerTest extends FunSuite {
   val filmed = new POSElement(POSTag("filmed", "verb"))
 
 
-  test("taggSentance"){
+  test("taggSentance") {
     /*
       Training set:
 
@@ -60,17 +60,17 @@ class TaggerTest extends FunSuite {
 
 
     val model = new Model[BaseElement, SkNNNode[BaseElement]]((label) => {
-      new SkNNNodeImpl[BaseElement, PlainAverageStorage[BaseElement]](label, 1)( () => {
+      new SkNNNodeImpl[BaseElement, PlainAverageStorage[BaseElement]](label, 1)(() => {
         new PlainAverageStorage[BaseElement](ElementMeasures.baseElementDistance)
       })
     })
 
-    training.foreach(seq => model.processSequenceImpl(seq)(onto => List((onto.label, onto)) ))
+    training.foreach(seq => model.processSequenceImpl(seq)(onto => List((onto.label, onto))))
 
     val sknn = new SkNN[BaseElement, SkNNNode[BaseElement]](model)
 
-    val resFilm = sknn.tag(test1, 1)
-    val resShip = sknn.tag(test2, 1)
+    val resFilm = sknn.tag(test1, 1)((_, _) => true)
+    val resShip = sknn.tag(test2, 1)((_, _) => true)
 
     val recoveredResultFilm = RecoverConcept.recover(test1, model.initNode, resFilm.head._1)
     val recoveredResultShip = RecoverConcept.recover(test2, model.initNode, resShip.head._1)
@@ -87,7 +87,7 @@ class TaggerTest extends FunSuite {
     * Test of context concepts
     */
 
-  test("taggSentanceContextSize3"){
+  test("taggSentanceContextSize3") {
 
     val contextSize = 5
 
@@ -101,17 +101,17 @@ class TaggerTest extends FunSuite {
 
 
     val model = new Model[BaseElement, SkNNNode[BaseElement]]((label) => {
-      new SkNNNodeImpl[BaseElement, PlainAverageStorage[BaseElement]](label, 1)( () => {
+      new SkNNNodeImpl[BaseElement, PlainAverageStorage[BaseElement]](label, 1)(() => {
         new PlainAverageStorage[BaseElement](ElementMeasures.baseElementDistance)
       })
     })
 
-    training.foreach(seq => model.processSequenceImpl(seq)(onto => List((onto.label, onto)) ))
+    training.foreach(seq => model.processSequenceImpl(seq)(onto => List((onto.label, onto))))
 
     val sknn = new SkNN[BaseElement, SkNNNode[BaseElement]](model)
 
-    val resFilm = sknn.tag(test1, 1)
-    val resShip = sknn.tag(test2, 1)
+    val resFilm = sknn.tag(test1, 1)((_,_) => true)
+    val resShip = sknn.tag(test2, 1)((_,_) => true)
 
     println("resFilm: ")
     resFilm.head._1.foreach(node => println(node.label))
@@ -135,9 +135,7 @@ class TaggerTest extends FunSuite {
   }
 
 
-
-
-  def printDist(conceptUrl1: String, conceptUrl2: String)= {
+  def printDist(conceptUrl1: String, conceptUrl2: String) = {
     val concept1 = new OntologyElement(conceptUrl1)
     val concept2 = new OntologyElement(conceptUrl2)
 
