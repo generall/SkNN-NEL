@@ -40,7 +40,7 @@ class SentenceAnalizer {
     */
   def toElement(obj: TrainObject): BaseElement = {
     obj.concepts match {
-      case Nil => new POSElement(POSTag(obj.tokens.mkString(" ") , obj.pos))
+      case Nil => new POSElement(POSTag(obj.tokens.mkString(" ") , obj.state))
       case List(concept) => new OntologyElement(wikiToDbpedia(concept.concept))
       case disambiguation: Iterable[ConceptVariant] => {
         val multi = new MultiElement[OntologyElement]
@@ -57,7 +57,7 @@ class SentenceAnalizer {
     obj.concepts match {
       case Nil => new BagOfWordElement(obj.tokens.map(token => {
         (token, 1.0) // TODO: add TF weighting here
-      }).toMap, obj.tokens.mkString(" "), obj.pos)
+      }).toMap, obj.state)
       case List(concept) => new OntologyElement(wikiToDbpedia(concept.concept))
       case disambiguation: Iterable[ConceptVariant] => {
         val multi = new MultiElement[OntologyElement]
@@ -140,7 +140,6 @@ class SentenceAnalizer {
     println(s"Weight: ${res(1)._2}")
     objs.zip(recoveredResult2).foreach({ case (obj, node) => println(s"${obj.tokens.mkString(" ")} => ${node.label}")})
     */
-
   }
 
 }

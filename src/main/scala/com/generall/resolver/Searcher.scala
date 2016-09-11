@@ -1,12 +1,12 @@
 package com.generall.resolver
 
 import ml.generall.elastic.{MentionSearchResult, MentionSearcher}
-import ml.generall.nlp.OpenNLPChunker
+import ml.generall.nlp.{CoreNLPTools, SentenceSplitter, OpenNLPChunker}
 
 /**
   * Created by generall on 27.08.16.
   */
-object Searcher extends MentionSearcher( "192.168.1.44" /* "localhost" */, 9300, "wiki"){
+object Searcher extends MentionSearcher( /*"192.168.1.44" */ "localhost" , 9300, "wiki") {
 
 
   override def findHref(href: String) = {
@@ -26,4 +26,12 @@ object Searcher extends MentionSearcher( "192.168.1.44" /* "localhost" */, 9300,
 
 }
 
-object LocalChunker extends OpenNLPChunker{}
+/*
+    Make objects singletons
+ */
+
+object LocalChunker extends OpenNLPChunker {}
+
+object LocalSplitter extends SentenceSplitter {}
+
+object LocalCoreNLP extends CoreNLPTools {}

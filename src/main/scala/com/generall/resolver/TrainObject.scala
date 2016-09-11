@@ -5,20 +5,14 @@ import ml.generall.elastic.ConceptVariant
 /**
   * Created by generall on 27.08.16.
   */
-class TrainObject(_text:Iterable[String], _pos: String, _chunkTag: String, _concepts: Iterable[ConceptVariant]) {
-
-  var concepts = _concepts
-
-  val tokens = _text
-
-  val pos = _pos
-
-  val chunkTag = _chunkTag
+class TrainObject(
+                   val tokens:Iterable[String],
+                   val state: String,
+                   val concepts: Iterable[ConceptVariant]
+                 ) {
 
   def print() = {
-    println(s"----- $tokens ----")
-    println(s"Pos: $pos")
-    println(s"chunkTag: $chunkTag")
+    println(s"state: $state: $tokens")
     concepts.foreach(concept => {
       println(s"\t${concept.concept} ${concept.count}")
     })

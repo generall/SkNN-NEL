@@ -3,7 +3,10 @@ package com.generall.ner.elements
 /**
   * Created by generall on 04.09.16.
   */
-class BagOfWordElement(words: Map[String, Double], _label: String, singleOutput: String = null) extends WeightedSetElement {
+class BagOfWordElement(
+                        words: Map[String, Double],
+                        _label: String,
+                        singleOutput: String = null) extends WeightedSetElement {
   /**
     * @return sorted by String feature list
     */
