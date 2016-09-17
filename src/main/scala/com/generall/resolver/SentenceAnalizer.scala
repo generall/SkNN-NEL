@@ -31,6 +31,33 @@ object SentenceAnalizer {
     wikilink.replaceAllLiterally("en.wikipedia.org/wiki", "dbpedia.org/resource")
   }
 
+  def toBagOfWordsElement(obj: TrainObject): BaseElement = {
+    val element = new BagOfWordElement(obj.tokens.map(lemma => {
+      (lemma._1, lemma._2)
+    }).toMap, obj.state)
+    obj.concepts match {
+      case Nil => element
+      case List(concept) => {
+        val multi = new MultiElement[WeightedSetElement]
+        val onto = new OntologyElement(SentenceAnalizer.wikiToDbpedia(concept.concept))
+        multi.addElement(onto)
+        multi.addElement(element)
+        multi.label = multi.genLabel
+        multi
+      }
+      case disambiguation: Iterable[ConceptVariant] => {
+        val multi = new MultiElement[WeightedSetElement]
+        disambiguation
+          .view
+          .map(x => new OntologyElement(SentenceAnalizer.wikiToDbpedia(x.concept)))
+          .foreach(multi.addElement)
+        multi.addElement(element)
+        multi.label = multi.genLabel
+        multi
+      }
+    }
+  }
+
 }
 
 /**
@@ -65,30 +92,7 @@ class SentenceAnalizer {
     }
   }
 
-  def toBagOfWordsElement(obj: TrainObject): BaseElement = {
-    val element = new BagOfWordElement(obj.tokens.map(lemma => {
-      (lemma._1, lemma._2)
-    }).toMap, obj.state)
-    obj.concepts match {
-      case Nil => element
-      case List(concept) => {
-        val multi = new MultiElement[WeightedSetElement]
-        val onto = new OntologyElement(SentenceAnalizer.wikiToDbpedia(concept.concept))
-        multi.addElement(onto)
-        multi.addElement(element)
-        multi
-      }
-      case disambiguation: Iterable[ConceptVariant] => {
-        val multi = new MultiElement[WeightedSetElement]
-        disambiguation
-          .view
-          .map(x => new OntologyElement(SentenceAnalizer.wikiToDbpedia(x.concept)))
-          .foreach(multi.addElement)
-        multi.addElement(element)
-        multi
-      }
-    }
-  }
+
 
 
   def printGraph(model: Model[BaseElement, SkNNNode[BaseElement]]) = {
@@ -115,14 +119,17 @@ class SentenceAnalizer {
 
     val contextSize = 5
 
+    val parseRes = parser.process(sentence)
 
-    val groups = parser.process(sentence)
-      .groupBy(record => (record.parseTag, record.ner, record.groupId))
+    val groups = parseRes.zipWithIndex
+      .groupBy({case (record, idx) => (record.parseTag, record.ner, record.groupId)})
       .toList
-      .sortBy(x => x._1._3)
-      .map(pair => (s"${pair._1._1}_${pair._1._2}", pair._2)) // creation of state
+      .sortBy(x => x._2.head._2)
+      .map(pair => (s"${pair._1._1}" /* _${pair._1._2} */, pair._2.map(_._1))) // creation of state
 
     val objs = Builder.makeTrain(groups)
+
+    objs.foreach(_.print())
 
     /**
       * All concepts with disambiguation
@@ -133,12 +140,12 @@ class SentenceAnalizer {
     println("conceptsToLearn: ")
     conceptsToLearn.foreach(println)
 
-    val target = ContextElementConverter.convert(objs.map(toBagOfWordsElement), contextSize)
+    val target = ContextElementConverter.convert(objs.map(SentenceAnalizer.toBagOfWordsElement), contextSize)
 
     val searchResults = conceptsToLearn.flatMap(x => exampleBuilder.build(x._2, x._1, x._3))
 
     val trainingSet = searchResults.map(sentSeq => {
-      ContextElementConverter.convert(sentSeq.map(toBagOfWordsElement), contextSize)
+      ContextElementConverter.convert(sentSeq.map(SentenceAnalizer.toBagOfWordsElement), contextSize)
     })
 
     val model = new Model[BaseElement, SkNNNode[BaseElement]]((label) => {

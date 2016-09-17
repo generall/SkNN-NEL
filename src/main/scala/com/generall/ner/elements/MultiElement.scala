@@ -13,6 +13,8 @@ class MultiElement[T <: BaseElement] extends BaseElement{
     subElements = element :: subElements
   }
 
-  override var label: String = null
+  def genLabel = subElements.map(_.label).sorted.mkString("_")
+
+  override var label: String = ""
   override var output: Set[String] = Set()
 }

@@ -69,7 +69,10 @@ class ExamplesBuilder {
     val groups = records.groupBy(record => (record.parseTag, record.ner, record.groupId))
     groups.toSeq.sortBy(x => x._1._3).foreach(group => {
       val ((parserTag, ner, _), groupRecords) = group
-      val trainObject = Builder.makeTrainFromRecords(groupRecords, s"${parserTag}_$ner", Nil)
+      /**
+        * #StateDefinition
+        */
+      val trainObject = Builder.makeTrainFromRecords(groupRecords, s"${parserTag}" /* _$ner */, Nil)
       listBuffer.append(trainObject)
     })
   }
@@ -81,7 +84,10 @@ class ExamplesBuilder {
         convertWithoutAnnotations(beforeAnnotation, listBuffer)
         val (annotated, afterAnnotation) = withAnnotation.span(record => record.beginPos < head.toPos)
 
-        val trainObject = Builder.makeTrainFromRecords(annotated, s"${annotated.head.parseTag}_${annotated.head.ner}", head.concepts)
+        /**
+          * Creating of state label here #StateDefinition
+          */
+        val trainObject = Builder.makeTrainFromRecords(annotated, s"${annotated.head.parseTag}" /* _${annotated.head.ner}" */, head.concepts)
         listBuffer.append(trainObject)
         convertRecords(afterAnnotation, tail, listBuffer)
       }
@@ -109,7 +115,12 @@ class ExamplesBuilder {
     val startMentionPos = firstChunk.text.length + 1
     val endMentionPos = middleChunk.text.length + startMentionPos + 1
     val text = firstChunk.text ++ " " ++ middleChunk.text ++ " " ++ lastChunk.text
-    val sentenceRange = splitter.getSentence(text, (startMentionPos, endMentionPos)).get
+    val sentenceRange = splitter.getSentence(text, (startMentionPos, endMentionPos)) match {
+      case None => {
+        throw new UnparsableException(text, startMentionPos, endMentionPos)
+      }
+      case x => x.get
+    }
     val sentence = text.substring(sentenceRange._1, sentenceRange._2)
     val annotations = List(ConceptsAnnotation(startMentionPos - sentenceRange._1, endMentionPos - sentenceRange._1, concepts))
     buildFromAnnotations(sentence, annotations)
@@ -145,11 +156,14 @@ class ExamplesBuilder {
         case List(firstChunk, middleChunk, lastChunk) => {
 
           FileLogger.logToFile("/tmp/learning.log", firstChunk.text ++ " | " ++ middleChunk.text ++ " | " ++ lastChunk.text)
-
-          buildFromMention(firstChunk, middleChunk, lastChunk, conceptVariant)
+          try {
+            buildFromMention(firstChunk, middleChunk, lastChunk, conceptVariant)
+          } catch {
+            case ex: UnparsableException => println(ex); Nil
+          }
         } /* end case */
       } /* end match */
-    }) /* end map*/
+    }).filter(_ != Nil) /* end map*/
   }
 
 }

@@ -1,6 +1,14 @@
 
 
 
-val l = List(1,2,3,4,5,6)
+val l = List(
+  (1,"a"),
+  (2,"b"),
+  (3,"c"),
+  (2,"d"),
+  (4,"e"),
+  (1,"f")
+)
 
-l.sliding(3).toList
+l.sortBy(_._1)
+

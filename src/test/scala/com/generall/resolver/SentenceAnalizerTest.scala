@@ -1,5 +1,12 @@
 package com.generall.resolver
 
+import com.generall.ner.{RecoverConcept, ElementMeasures}
+import com.generall.ner.elements.{BagOfWordElement, ContextElement, ContextElementConverter}
+import com.generall.sknn.SkNN
+import com.generall.sknn.model.storage.PlainAverageStorage
+import com.generall.sknn.model.{SkNNNodeImpl, SkNNNode, Model}
+import com.generall.sknn.model.storage.elements.BaseElement
+import ml.generall.elastic.{ConceptVariant, Chunk}
 import org.scalatest.FunSuite
 
 /**
@@ -21,7 +28,7 @@ class SentenceAnalizerTest extends FunSuite {
 
     analizer.analyse("James Cameron made Titanic")
 
-    analizer.analyse("Titanic struck Iceberg")
+    analizer.analyse("On the next day Titanic struck Iceberg")
 
   }
 
@@ -36,17 +43,25 @@ class SentenceAnalizerTest extends FunSuite {
   }
 
   test("testNewParser") {
-    val str = "I will go to London with Stalin on next weekend"
+
+
+    val str = "Yesterday Titanic struck Iceberg"
+
+    val exampleBuilder = new ExamplesBuilder
 
     val contextSize = 5
 
     val parser = LocalCoreNLP
 
-    val groups = parser.process(str)
-      .groupBy(record => (record.parseTag, record.ner, record.groupId))
+    val parseRes = parser.process(str)
+
+    parseRes.foreach(println)
+
+    val groups = parseRes.zipWithIndex
+      .groupBy({case (record, idx) => (record.parseTag, record.ner, record.groupId)})
       .toList
-      .sortBy(x => x._1._3)
-      .map(pair => (s"${pair._1._1}_${pair._1._2}", pair._2)) // creation of state
+      .sortBy(x => x._2.head._2)
+      .map(pair => (s"${pair._1._1}", pair._2.map(_._1))) // creation of state
 
     val objs = Builder.makeTrain(groups)
 
@@ -57,9 +72,73 @@ class SentenceAnalizerTest extends FunSuite {
       */
     val conceptsToLearn: List[(String, String, String)] = SentenceAnalizer.getConceptsToLearn(objs, contextSize)
 
-
     println("conceptsToLearn: ")
     conceptsToLearn.foreach(println)
+
+    val target = ContextElementConverter.convert(objs.map(SentenceAnalizer.toBagOfWordsElement), contextSize)
+
+
+    val searchResults = List(
+      exampleBuilder.buildFromMention(
+        Chunk("1912 On its maiden voyage, the British ocean liner"),
+        Chunk("RMS Titanic"),
+        Chunk("struck an iceberg in the North Atlantic Ocean at about 11:40 pm ship'\ns time"),
+        List(ConceptVariant("http://en.wikipedia.org/wiki/RMS_Titanic"))
+      ),
+      exampleBuilder.buildFromMention(
+        Chunk("That moonless night of 14 April 1912 when the mighty"),
+        Chunk("RMS Titanic"),
+        Chunk("with 2,223 souls on board collided 37 seconds after the sighting of a partic\nular iceberg and the fateful annoucement by lookouts, \"Iceberg right ahead!\" There"),
+        List(ConceptVariant("http://en.wikipedia.org/wiki/RMS_Titanic"))
+      ),
+      exampleBuilder.buildFromMention(
+        Chunk("Southern Man Saturday, April 14, 2012 Shipwrecks and the Social Contract On this day a century ago the RMS"),
+        Chunk("Titanic"),
+        Chunk(", while on her maiden voyage from England to the United States, was mortally wounded when she grazed an iceberg that tore open her side."),
+        List(ConceptVariant("http://en.wikipedia.org/wiki/Titanic_(1997_film)"))
+      ),
+      exampleBuilder.buildFromMention(
+        Chunk("from them again. Tuld and Cohen intend to cash in on the crisis. They’re flipsides of the same tainted coin. ‘Margin Call’ is like ‘"),
+        Chunk("Titanic"),
+        Chunk("’ from the moment it hits the iceberg. Except, here, everyone survives. Even Eric Dale. They’re all on life-jackets out at sea, searching for land"),
+        List(ConceptVariant("http://en.wikipedia.org/wiki/Titanic_(1997_film)"))
+      )
+    )
+
+    val trainingSet = searchResults.map(sentSeq => {
+      println("\n ------------------------------------------ \n")
+      sentSeq.foreach(_.print())
+      ContextElementConverter.convert(sentSeq.map(SentenceAnalizer.toBagOfWordsElement), contextSize)
+    })
+
+    val model = new Model[BaseElement, SkNNNode[BaseElement]]((label) => {
+      new SkNNNodeImpl[BaseElement, PlainAverageStorage[BaseElement]](label, 1)(() => {
+        new PlainAverageStorage[BaseElement](ElementMeasures.bagOfWordElementDistance)
+      })
+    })
+
+    trainingSet.foreach(seq => model.processSequenceImpl(seq)(onto => List((onto.label, onto))))
+
+    val sknn = new SkNN[BaseElement, SkNNNode[BaseElement]](model)
+
+
+    val res = sknn.tag(target, 1)((elem, node) => {
+      elem match {
+        case contextElement: ContextElement => contextElement.mainElement match {
+          case bow: BagOfWordElement => bow.label == node.label
+          case _ => true
+        }
+        case _ => true
+      }
+    })
+
+
+    println("\n =========== Result ========= \n")
+
+    val recoveredResult1 = RecoverConcept.recover(target, model.initNode, res(0)._1)
+    println(s"Weight: ${res(0)._2}")
+    objs.zip(recoveredResult1).foreach({ case (obj, node) => println(s"${obj.tokens.mkString(" ")} => ${node.label}") })
+
   }
 
 }
