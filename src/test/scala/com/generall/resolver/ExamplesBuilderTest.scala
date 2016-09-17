@@ -13,36 +13,6 @@ class ExamplesBuilderTest extends FunSuite with BeforeAndAfterEach {
   override def beforeEach() {
   }
 
-  test("testMakeTrain") {
-
-    val data = List(
-      ("NP",
-        List(
-          ("Moscow", ("NNP", "B-NP"))
-        )
-        ),
-      ("VP",
-        List(
-          ("is", ("VB", "B-VP"))
-        )
-        ),
-      ("NP",
-        List(
-          ("soviet", ("NN", "B-NP")),
-          ("city", ("NN", "I-NP"))
-        )
-        )
-    )
-    val trainList = Builder.makeTrain(data)
-    trainList.foreach(trainObj => {
-      trainObj.print()
-    })
-
-    assert(trainList(0).concepts.nonEmpty)
-    assert(trainList(1).concepts.isEmpty)
-    assert(trainList(2).concepts.nonEmpty)
-  }
-
   test("testBuild") {
     val res = builder.build("http://en.wikipedia.org/wiki/RMS_Titanic")
     res.foreach(seq => {
@@ -124,10 +94,7 @@ class ExamplesBuilderTest extends FunSuite with BeforeAndAfterEach {
       maxScore = 1.0,
       minScore = 1.0
     ))
-
     builder.buildFromMention(firstChunk, middleChunk, lastChunk, conceptVariant).foreach(_.print())
-
-
   }
 
 }

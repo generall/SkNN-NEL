@@ -1,7 +1,7 @@
 package com.generall.resolver
 
 import ml.generall.elastic.{MentionSearchResult, MentionSearcher}
-import ml.generall.nlp.{CoreNLPTools, SentenceSplitter, OpenNLPChunker}
+import ml.generall.nlp.{IDFDict, CoreNLPTools, SentenceSplitter, OpenNLPChunker}
 
 /**
   * Created by generall on 27.08.16.
@@ -30,7 +30,7 @@ object Searcher extends MentionSearcher( /*"192.168.1.44" */ "localhost" , 9300,
     Make objects singletons
  */
 
-object LocalChunker extends OpenNLPChunker {}
+object LocalIDFDict extends IDFDict {}
 
 object LocalSplitter extends SentenceSplitter {}
 

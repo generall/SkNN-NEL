@@ -1,7 +1,8 @@
 package com.generall.resolver
 
+import com.generall.resolver.filters.DummyFilter
 import ml.generall.elastic.{Chunk, ConceptVariant}
-import ml.generall.nlp.{ChunkRecord, CoreNLPTools, SentenceSplitter, Chunker}
+import ml.generall.nlp._
 
 import scala.collection.mutable.ListBuffer
 
@@ -13,6 +14,12 @@ object Builder {
 
   val searcher = Searcher
 
+  val mentionFilter = DummyFilter
+
+
+  def weightFu(record: ChunkRecord): Double = {
+    LocalIDFDict.getIDF(record.lemma.toLowerCase) / Math.log(LocalIDFDict.totalWordCount)
+  }
 
   /**
     * Make list of train objects from grouped chunks
@@ -20,43 +27,26 @@ object Builder {
     * @param groups groups of chunks
     * @return
     */
-  def makeTrain(groups: List[(String, List[(String, (String, String))])]): List[TrainObject] = {
-    groups.flatMap({ case (group, list) => {
-      group match {
-        case "NP" => {
-          val text = list.map(_._1).mkString(" ")
-          val variants = searcher.findMentions(text).stats
-          List(new TrainObject(list.map(_._1), "group", variants))
+  def makeTrain(groups: Iterable[(String, List[ChunkRecord])]): List[TrainObject] = {
+    groups.map(group => {
+      val (state, tokens) = group
+      val pattern = "^(NP.*)".r
+      state match {
+        case pattern(c) => {
+          val text = tokens.map(_.word).mkString(" ")
+          val weights = tokens.map(weightFu)
+          val variants = if (mentionFilter.filter(tokens, weights)) searcher.findMentions(text).stats else Nil
+          new TrainObject(tokens.zip(weights).map(x => (x._1.lemma, x._2)), state, variants)
         }
         case _ =>
-          list.map(word => {
-            val (token, (pos, chunkTag)) = word
-            new TrainObject(List(token), pos, Nil)
-          })
+          val weights = tokens.map(weightFu)
+          new TrainObject(tokens.zip(weights).map(x => (x._1.lemma, x._2)), state, Nil)
       }
-    }
-    })
-  }
-
-  def makePosTrain(groups: List[(String, List[(String, (String, String))])]): List[TrainObject] = {
-    groups.flatMap({ case (group, list) => {
-      group match {
-        case "NP" => {
-          val text = list.map(_._1)
-          List(new TrainObject(text, "group", Nil))
-        }
-        case _ =>
-          list.map(word => {
-            val (token, (pos, chunkTag)) = word
-            new TrainObject(List(token), pos, Nil)
-          })
-      }
-    }
-    })
+    }).toList
   }
 
   def makeTrainFromRecords(records: List[ChunkRecord], state: String, concepts: List[ConceptVariant]): TrainObject = {
-    new TrainObject(records.map(_.lemma), state, concepts)
+    new TrainObject(records.map(x => (x.lemma, 1.0)), state, concepts)
   }
 }
 
@@ -71,14 +61,12 @@ class ExamplesBuilder {
 
   val searcher = Searcher
 
-  val chunker: Chunker = LocalChunker
-
   val splitter: SentenceSplitter = LocalSplitter
 
   val parser: CoreNLPTools = LocalCoreNLP
 
   def convertWithoutAnnotations(records: List[ChunkRecord], listBuffer: ListBuffer[TrainObject]) = {
-    val groups = records.groupBy(record => (record.parseTag, record.ner, record.groupId) )
+    val groups = records.groupBy(record => (record.parseTag, record.ner, record.groupId))
     groups.toSeq.sortBy(x => x._1._3).foreach(group => {
       val ((parserTag, ner, _), groupRecords) = group
       val trainObject = Builder.makeTrainFromRecords(groupRecords, s"${parserTag}_$ner", Nil)
@@ -93,7 +81,7 @@ class ExamplesBuilder {
         convertWithoutAnnotations(beforeAnnotation, listBuffer)
         val (annotated, afterAnnotation) = withAnnotation.span(record => record.beginPos < head.toPos)
 
-        val trainObject = Builder.makeTrainFromRecords(annotated, s"${annotated.head.parseTag}_${annotated.head.ner}" , head.concepts)
+        val trainObject = Builder.makeTrainFromRecords(annotated, s"${annotated.head.parseTag}_${annotated.head.ner}", head.concepts)
         listBuffer.append(trainObject)
         convertRecords(afterAnnotation, tail, listBuffer)
       }
@@ -120,25 +108,19 @@ class ExamplesBuilder {
   def buildFromMention(firstChunk: Chunk, middleChunk: Chunk, lastChunk: Chunk, concepts: List[ConceptVariant]): List[TrainObject] = {
     val startMentionPos = firstChunk.text.length + 1
     val endMentionPos = middleChunk.text.length + startMentionPos + 1
-
     val text = firstChunk.text ++ " " ++ middleChunk.text ++ " " ++ lastChunk.text
-
     val sentenceRange = splitter.getSentence(text, (startMentionPos, endMentionPos)).get
-
     val sentence = text.substring(sentenceRange._1, sentenceRange._2)
-
     val annotations = List(ConceptsAnnotation(startMentionPos - sentenceRange._1, endMentionPos - sentenceRange._1, concepts))
-
     buildFromAnnotations(sentence, annotations)
   }
 
-  def build(concept: String): List[List[TrainObject]] = {
-    val searchRes = searcher.findHref(concept)
+  def build(concept: String, leftContext: String = "", rightContext: String = ""): List[List[TrainObject]] = {
+    val searchRes = searcher.findHrefWithContext(concept, leftContext, rightContext)
     val count = searchRes.size
 
     FileLogger.logToFile("/tmp/learning.log", concept)
     FileLogger.logToFile("/tmp/learning.log", "")
-
 
     val conceptVariant = List(ConceptVariant(
       concept = concept,
@@ -161,22 +143,10 @@ class ExamplesBuilder {
     }).map(item => {
       item.chunks match {
         case List(firstChunk, middleChunk, lastChunk) => {
-          val firstSents = chunker.chunkSentence(firstChunk.text)
-          val lastSents = chunker.chunkSentence(lastChunk.text)
 
-          val firstPart = if (firstSents.isEmpty) "" else firstSents.last
-          val middlePart = middleChunk.text
-          val lastPart = if (lastSents.isEmpty) "" else lastSents(0)
+          FileLogger.logToFile("/tmp/learning.log", firstChunk.text ++ " | " ++ middleChunk.text ++ " | " ++ lastChunk.text)
 
-          FileLogger.logToFile("/tmp/learning.log", firstPart ++ " | " ++ middlePart ++ " | " ++ lastPart)
-
-          chunker.group(List(firstPart, middlePart, lastPart)) match {
-            case List(firstTags, middleTags, lastTags) => {
-              Builder.makePosTrain(firstTags) ++
-                List(new TrainObject(List(middlePart), "group", conceptVariant)) ++
-                Builder.makePosTrain(lastTags)
-            }
-          }
+          buildFromMention(firstChunk, middleChunk, lastChunk, conceptVariant)
         } /* end case */
       } /* end match */
     }) /* end map*/

@@ -35,4 +35,31 @@ class SentenceAnalizerTest extends FunSuite {
 
   }
 
+  test("testNewParser") {
+    val str = "I will go to London with Stalin on next weekend"
+
+    val contextSize = 5
+
+    val parser = LocalCoreNLP
+
+    val groups = parser.process(str)
+      .groupBy(record => (record.parseTag, record.ner, record.groupId))
+      .toList
+      .sortBy(x => x._1._3)
+      .map(pair => (s"${pair._1._1}_${pair._1._2}", pair._2)) // creation of state
+
+    val objs = Builder.makeTrain(groups)
+
+    objs.foreach(_.print())
+
+    /**
+      * All concepts with disambiguation
+      */
+    val conceptsToLearn: List[(String, String, String)] = SentenceAnalizer.getConceptsToLearn(objs, contextSize)
+
+
+    println("conceptsToLearn: ")
+    conceptsToLearn.foreach(println)
+  }
+
 }
