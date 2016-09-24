@@ -69,32 +69,6 @@ class SentenceAnalizer {
   val exampleBuilder = new ExamplesBuilder
 
 
-
-
-  /**
-    * Convert train object to SkNN-acceptable elements (construct ontology if needed)
-    *
-    * @param obj train object
-    * @return sibling of BaseElement
-    */
-  def toElement(obj: TrainObject): BaseElement = {
-    obj.concepts match {
-      case Nil => new POSElement(POSTag(obj.tokens.mkString(" "), obj.state))
-      case List(concept) => new OntologyElement(SentenceAnalizer.wikiToDbpedia(concept.concept))
-      case disambiguation: Iterable[ConceptVariant] => {
-        val multi = new MultiElement[OntologyElement]
-        disambiguation
-          .view
-          .map(x => new OntologyElement(SentenceAnalizer.wikiToDbpedia(x.concept)))
-          .foreach(multi.addElement)
-        multi
-      }
-    }
-  }
-
-
-
-
   def printGraph(model: Model[BaseElement, SkNNNode[BaseElement]]) = {
     val seen = new mutable.HashSet[SkNNNode[BaseElement]]()
     var notSeen = List(model.initNode)

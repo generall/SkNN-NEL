@@ -27,7 +27,6 @@ class SentenceAnalizerTest extends FunSuite {
 
 
     analizer.analyse("James Cameron made Titanic")
-
     analizer.analyse("On the next day Titanic struck Iceberg")
 
   }

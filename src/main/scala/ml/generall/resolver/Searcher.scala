@@ -7,7 +7,7 @@ import ml.generall.nlp.{IDFDict, CoreNLPTools, SentenceSplitter, OpenNLPChunker}
   * Created by generall on 27.08.16.
   */
 object Searcher extends MentionSearcher(
-  "192.168.1.44" /* "localhost" */,
+  /*"192.168.1.44" */ "localhost",
   9300,
   "wiki",
   1,
