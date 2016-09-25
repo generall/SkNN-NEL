@@ -1,6 +1,6 @@
-package com.generall.ner
+package ml.generall.ner
 
-import com.generall.ner.elements.MultiElement
+import ml.generall.ner.elements.MultiElement
 import org.scalatest.FunSuite
 
 /**

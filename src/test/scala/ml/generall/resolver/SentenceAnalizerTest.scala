@@ -1,11 +1,11 @@
-package com.generall.resolver
+package ml.generall.resolver
 
-import com.generall.ner.{RecoverConcept, ElementMeasures}
-import com.generall.ner.elements.{BagOfWordElement, ContextElement, ContextElementConverter}
-import com.generall.sknn.SkNN
-import com.generall.sknn.model.storage.PlainAverageStorage
-import com.generall.sknn.model.{SkNNNodeImpl, SkNNNode, Model}
-import com.generall.sknn.model.storage.elements.BaseElement
+import ml.generall.ner.{RecoverConcept, ElementMeasures}
+import ml.generall.ner.elements.{BagOfWordElement, ContextElement, ContextElementConverter}
+import ml.generall.sknn.SkNN
+import ml.generall.sknn.model.storage.PlainAverageStorage
+import ml.generall.sknn.model.{SkNNNodeImpl, SkNNNode, Model}
+import ml.generall.sknn.model.storage.elements.BaseElement
 import ml.generall.elastic.{ConceptVariant, Chunk}
 import org.scalatest.FunSuite
 

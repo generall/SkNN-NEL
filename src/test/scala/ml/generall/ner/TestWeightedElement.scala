@@ -1,6 +1,6 @@
-package com.generall.ner
+package ml.generall.ner
 
-import com.generall.ner.elements.WeightedSetElement
+import ml.generall.ner.elements.WeightedSetElement
 
 /**
   * Created by generall on 14.08.16.

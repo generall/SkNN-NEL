@@ -1,7 +1,7 @@
-package com.generall.ner
+package ml.generall.ner
 
-import com.generall.ner.elements._
-import com.generall.sknn.model.storage.elements.BaseElement
+import ml.generall.ner.elements._
+import ml.generall.sknn.model.storage.elements.BaseElement
 
 import scalaz._
 import Scalaz._

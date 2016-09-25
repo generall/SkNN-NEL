@@ -18,6 +18,9 @@ libraryDependencies += "ml.generall" %% "ontology" % "1.0-SNAPSHOT"
 libraryDependencies += "ml.generall" %% "elastic-scala" % "1.0-SNAPSHOT"
 libraryDependencies += "ml.generall" %% "sentence-chunker" % "1.0-SNAPSHOT"
 
+libraryDependencies += "ml.generall" %% "scala-common" % "1.0-SNAPSHOT"
+
+
 
 libraryDependencies += "com.propensive" %% "rapture" % "2.0.0-M7"
 libraryDependencies += "org.scalaz" %% "scalaz-core" % "7.2.5"

@@ -1,7 +1,7 @@
-package com.generall.ner.elements
+package ml.generall.ner.elements
 
-import com.generall.ontology.base.GraphClient
-import com.generall.ontology.structure.{Concept, TraversalFactory}
+import ml.generall.ontology.base.GraphClient
+import ml.generall.ontology.structure.{Concept, TraversalFactory}
 
 /**
   * Created by generall on 13.08.16.

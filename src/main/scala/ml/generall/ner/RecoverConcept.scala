@@ -1,8 +1,8 @@
-package com.generall.ner
+package ml.generall.ner
 
-import com.generall.ner.elements.{ContextElementConverter, ContextElement, MultiElement}
-import com.generall.sknn.model.SkNNNode
-import com.generall.sknn.model.storage.elements.{BaseElement, SetElement}
+import ml.generall.ner.elements.{ContextElementConverter, ContextElement, MultiElement}
+import ml.generall.sknn.model.SkNNNode
+import ml.generall.sknn.model.storage.elements.{BaseElement, SetElement}
 
 /**
   * Created by generall on 14.08.16.

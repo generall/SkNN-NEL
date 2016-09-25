@@ -1,6 +1,7 @@
-package com.generall.resolver
+package ml.generall.resolver
 
-import com.generall.resolver.filters.DummyFilter
+import ml.generall.isDebug
+import ml.generall.resolver.filters.DummyFilter
 import ml.generall.elastic.{Chunk, ConceptVariant}
 import ml.generall.nlp._
 
@@ -35,18 +36,23 @@ object Builder {
         case pattern(c) => {
           val text = tokens.map(_.word).mkString(" ")
           val weights = tokens.map(weightFu)
-          val variants = if (mentionFilter.filter(tokens, weights)) searcher.findMentions(text).stats else Nil
-          new TrainObject(tokens.zip(weights).map(x => (x._1.lemma, x._2)), state, variants)
+          val variants = if (mentionFilter.filter(tokens, weights))
+            searcher.findMentions(text).stats
+          else {
+            if (isDebug()) println(s"Filter mention: $text")
+            Nil
+          }
+          TrainObject(tokens.zip(weights).map(x => (x._1.lemma, x._2)), state, variants)
         }
         case _ =>
           val weights = tokens.map(weightFu)
-          new TrainObject(tokens.zip(weights).map(x => (x._1.lemma, x._2)), state, Nil)
+          TrainObject(tokens.zip(weights).map(x => (x._1.lemma, x._2)), state, Nil)
       }
     }).toList
   }
 
   def makeTrainFromRecords(records: List[ChunkRecord], state: String, concepts: List[ConceptVariant]): TrainObject = {
-    new TrainObject(records.map(x => (x.lemma, 1.0)), state, concepts)
+    TrainObject(records.map(x => (x.lemma, 1.0)), state, concepts)
   }
 }
 

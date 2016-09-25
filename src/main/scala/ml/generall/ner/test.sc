@@ -12,3 +12,10 @@ val l = List(
 
 l.sortBy(_._1)
 
+case class TestClass(val x: Iterable[String]){
+
+}
+
+
+
+TestClass(List("4", "test"))

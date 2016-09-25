@@ -1,10 +1,10 @@
-package com.generall.ner
+package ml.generall.ner
 
-import com.generall.ner.elements._
-import com.generall.sknn.SkNN
-import com.generall.sknn.model.storage.PlainAverageStorage
-import com.generall.sknn.model.{SkNNNodeImpl, SkNNNode, Model}
-import com.generall.sknn.model.storage.elements.BaseElement
+import ml.generall.ner.elements._
+import ml.generall.sknn.SkNN
+import ml.generall.sknn.model.storage.PlainAverageStorage
+import ml.generall.sknn.model.{SkNNNodeImpl, SkNNNode, Model}
+import ml.generall.sknn.model.storage.elements.BaseElement
 import org.scalatest.FunSuite
 
 /**

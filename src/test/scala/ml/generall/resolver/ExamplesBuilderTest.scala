@@ -1,4 +1,4 @@
-package com.generall.resolver
+package ml.generall.resolver
 
 import ml.generall.elastic.{Chunk, ConceptVariant}
 import org.scalatest.{BeforeAndAfterEach, FunSuite}

@@ -1,4 +1,4 @@
-package com.generall.ner
+package ml.generall.ner
 
 /**
   * Created by generall on 13.08.16.

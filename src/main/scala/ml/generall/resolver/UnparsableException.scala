@@ -1,4 +1,4 @@
-package com.generall.resolver
+package ml.generall.resolver
 
 /**
   * Created by generall on 17.09.16.

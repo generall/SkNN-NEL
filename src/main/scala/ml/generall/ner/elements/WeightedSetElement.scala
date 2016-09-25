@@ -1,6 +1,6 @@
-package com.generall.ner.elements
+package ml.generall.ner.elements
 
-import com.generall.sknn.model.storage.elements.SetElement
+import ml.generall.sknn.model.storage.elements.SetElement
 
 /**
   * Created by generall on 13.08.16.

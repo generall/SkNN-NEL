@@ -1,4 +1,4 @@
-package com.generall.resolver
+package ml.generall.resolver
 
 import ml.generall.elastic.{MentionSearchResult, MentionSearcher}
 import ml.generall.nlp.{IDFDict, CoreNLPTools, SentenceSplitter, OpenNLPChunker}

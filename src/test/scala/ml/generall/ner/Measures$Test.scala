@@ -1,4 +1,4 @@
-package com.generall.ner
+package ml.generall.ner
 
 import org.scalatest.FunSuite
 

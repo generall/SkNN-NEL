@@ -1,4 +1,4 @@
-package com.generall.resolver.filters
+package ml.generall.resolver.filters
 
 import ml.generall.nlp.ChunkRecord
 

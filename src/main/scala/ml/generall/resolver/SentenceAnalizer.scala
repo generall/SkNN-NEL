@@ -1,17 +1,19 @@
-package com.generall.resolver
+package ml.generall.resolver
 
-import com.generall.ner.elements._
-import com.generall.ner.{ElementMeasures, RecoverConcept}
-import com.generall.sknn.SkNN
-import com.generall.sknn.model.storage.PlainAverageStorage
-import com.generall.sknn.model.storage.elements.BaseElement
-import com.generall.sknn.model.{Model, SkNNNode, SkNNNodeImpl}
+import ml.generall.ner.elements._
+import ml.generall.ner.{ElementMeasures, RecoverConcept}
+import ml.generall.sknn.SkNN
+import ml.generall.sknn.model.storage.PlainAverageStorage
+import ml.generall.sknn.model.storage.elements.BaseElement
+import ml.generall.sknn.model.{Model, SkNNNode, SkNNNodeImpl}
 import ml.generall.elastic.ConceptVariant
 
 import scala.collection.mutable
 
 
 object SentenceAnalizer {
+
+
   def getConceptsToLearn(objList: List[TrainObject], contextSize: Int): List[(String, String, String)] = {
 
     var res: List[(String, String, String)] = Nil
@@ -64,35 +66,14 @@ object SentenceAnalizer {
   * Created by generall on 27.08.16.
   */
 class SentenceAnalizer {
+
+
+  val contextSize = 5
   val searcher = Searcher
   val parser = LocalCoreNLP
   val exampleBuilder = new ExamplesBuilder
 
-
-  def printGraph(model: Model[BaseElement, SkNNNode[BaseElement]]) = {
-    val seen = new mutable.HashSet[SkNNNode[BaseElement]]()
-    var notSeen = List(model.initNode)
-    while (notSeen.nonEmpty) {
-      notSeen match {
-        case head :: tail => {
-          notSeen = tail
-          if (!seen.contains(head)) {
-            head.getOutgoingNodes.foreach(node => {
-              println(s" ${head.label} -> ${node.label} ")
-              notSeen = node :: notSeen
-            })
-            seen.add(head)
-          }
-        }
-      }
-    }
-  }
-
-
-  def analyse(sentence: String) = {
-
-    val contextSize = 5
-
+  def prepareSentence(sentence: String): List[TrainObject] ={
     val parseRes = parser.process(sentence)
 
     val groups = parseRes.zipWithIndex
@@ -101,9 +82,22 @@ class SentenceAnalizer {
       .sortBy(x => x._2.head._2)
       .map(pair => (s"${pair._1._1}" /* _${pair._1._2} */, pair._2.map(_._1))) // creation of state
 
-    val objs = Builder.makeTrain(groups)
+    Builder.makeTrain(groups)
+  }
+
+
+  def analyse(sentence: String) = {
+
+    /**
+      * Prepage target sentence
+      */
+
+    val objs = prepareSentence(sentence)
+
 
     objs.foreach(_.print())
+
+    val target: List[ContextElement] = ContextElementConverter.convert(objs.map(SentenceAnalizer.toBagOfWordsElement), contextSize)
 
     /**
       * All concepts with disambiguation
@@ -114,9 +108,11 @@ class SentenceAnalizer {
     println("conceptsToLearn: ")
     conceptsToLearn.foreach(println)
 
-    val target = ContextElementConverter.convert(objs.map(SentenceAnalizer.toBagOfWordsElement), contextSize)
 
-    val searchResults = conceptsToLearn.flatMap(x => exampleBuilder.build(x._2, x._1, x._3))
+    /**
+      * Prepare training set from disambiguation
+      */
+    val searchResults: List[List[TrainObject]] = conceptsToLearn.flatMap(x => exampleBuilder.build(x._2, x._1, x._3))
 
     val trainingSet = searchResults.map(sentSeq => {
       ContextElementConverter.convert(sentSeq.map(SentenceAnalizer.toBagOfWordsElement), contextSize)

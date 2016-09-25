@@ -1,4 +1,4 @@
-package com.generall.resolver
+package ml.generall.resolver
 
 import scala.reflect.io.File
 
