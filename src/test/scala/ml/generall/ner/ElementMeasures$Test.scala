@@ -1,5 +1,6 @@
 package ml.generall.ner
 
+import ml.generall.common.StupidAssert
 import ml.generall.ner.elements.MultiElement
 import org.scalatest.FunSuite
 
@@ -34,7 +35,7 @@ class ElementMeasures$Test extends FunSuite {
     mEl2.addElement(map4)
     mEl2.addElement(map5)
 
-    assert((ElementMeasures.baseElementDistance(mEl1, mEl2) - 0.33333).abs < 0.001)
+    StupidAssert.assert((ElementMeasures.baseElementDistance(mEl1, mEl2) - 0.33333).abs < 0.001)
 
   }
 

@@ -1,7 +1,7 @@
 package ml.generall.resolver
 
 import ml.generall.isDebug
-import ml.generall.resolver.filters.DummyFilter
+import ml.generall.resolver.filters.{SvmFilter, DummyFilter}
 import ml.generall.elastic.{Chunk, ConceptVariant}
 import ml.generall.nlp._
 
@@ -15,11 +15,16 @@ object Builder {
 
   val searcher = Searcher
 
-  val mentionFilter = DummyFilter
+  val mentionFilter = SvmFilter
 
 
   def weightFu(record: ChunkRecord): Double = {
     LocalIDFDict.getIDF(record.lemma.toLowerCase) / Math.log(LocalIDFDict.totalWordCount)
+  }
+
+  def filterChunk(tokens: List[ChunkRecord]):Boolean = {
+    val weights = tokens.map(weightFu)
+    mentionFilter.filter(tokens, weights)
   }
 
   /**

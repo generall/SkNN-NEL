@@ -89,7 +89,7 @@ class SentenceAnalizer {
   def analyse(sentence: String) = {
 
     /**
-      * Prepage target sentence
+      * Prepare target sentence
       */
 
     val objs = prepareSentence(sentence)

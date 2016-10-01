@@ -1,5 +1,6 @@
 package ml.generall.ner
 
+import ml.generall.common.StupidAssert
 import ml.generall.ner.elements._
 import ml.generall.sknn.model.SkNNNodeImpl
 import ml.generall.sknn.model.storage.PlainAverageStorage
@@ -59,7 +60,7 @@ class RecoverConcept$Test extends FunSuite with BeforeAndAfter {
 
     resolved.foreach(x => println(x.label))
 
-    assert(resolved(2).label == titanic_ship.label)
+    StupidAssert.assert(resolved(2).label == titanic_ship.label)
   }
 
   test("testRecoverContext") {
@@ -100,7 +101,7 @@ class RecoverConcept$Test extends FunSuite with BeforeAndAfter {
 
     resolved.foreach(x => println(x.label))
 
-    assert(resolved(2).label == titanic_ship.label)
+    StupidAssert.assert(resolved(2).label == titanic_ship.label)
   }
 
   test("testMatchElement") {

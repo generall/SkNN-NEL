@@ -1,5 +1,6 @@
 package ml.generall.ner
 
+import ml.generall.common.StupidAssert
 import org.scalatest.FunSuite
 
 /**
@@ -24,8 +25,8 @@ class Measures$Test extends FunSuite {
       ("e", 0.4)
     ).toMap
 
-    assert((Measures.weightedIntersection(list1, list2) - 0.7).abs < 0.00001)
-    assert((Measures.weightedIntersection(list2, list1) - 0.7).abs < 0.00001)
+    StupidAssert.assert((Measures.weightedIntersection(list1, list2) - 0.7).abs < 0.00001)
+    StupidAssert.assert((Measures.weightedIntersection(list2, list1) - 0.7).abs < 0.00001)
   }
 
   test("testWeightedJaccardIndex") {
@@ -43,7 +44,7 @@ class Measures$Test extends FunSuite {
       ("e", 0.4)
     ).toMap
 
-    assert( (Measures.weightedJaccardDisatnce(list1, list2) - (1 - 0.7/2.2)).abs < 0.0001 )
+    StupidAssert.assert( (Measures.weightedJaccardDisatnce(list1, list2) - (1 - 0.7/2.2)).abs < 0.0001 )
 
   }
 

@@ -1,5 +1,6 @@
 package ml.generall.resolver
 
+import ml.generall.common.StupidAssert
 import ml.generall.ner.{RecoverConcept, ElementMeasures}
 import ml.generall.ner.elements.{BagOfWordElement, ContextElement, ContextElementConverter}
 import ml.generall.sknn.SkNN
@@ -40,6 +41,28 @@ class SentenceAnalizerTest extends FunSuite {
     analizer.analyse(str)
 
   }
+
+  test("testFilter") {
+    val str = "I will go to London"
+
+    val analizer = new SentenceAnalizer
+
+
+    val parseRes = analizer.parser.process(str)
+
+    val groups = parseRes.zipWithIndex
+      .groupBy({case (record, idx) => (record.parseTag, record.ner, record.groupId)})
+      .toList
+      .sortBy(x => x._2.head._2)
+      .map(pair => pair._2.map(_._1))
+
+
+    StupidAssert.assert(!Builder.filterChunk(groups.head))
+
+    StupidAssert.assert(Builder.filterChunk(groups.last))
+
+  }
+
 
   test("testNewParser") {
 
