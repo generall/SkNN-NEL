@@ -123,9 +123,16 @@ class ExamplesBuilder {
 
 
   def buildFromMention(firstChunk: Chunk, middleChunk: Chunk, lastChunk: Chunk, concepts: List[ConceptVariant]): List[TrainObject] = {
-    val startMentionPos = firstChunk.text.length + 1
-    val endMentionPos = middleChunk.text.length + startMentionPos + 1
-    val text = firstChunk.text ++ " " ++ middleChunk.text ++ " " ++ lastChunk.text
+
+    val firstChunkText = firstChunk.text.replaceAll("\\P{InBasic_Latin}", "")
+    val middleChunkText = middleChunk.text.replaceAll("\\P{InBasic_Latin}", "")
+    val lastChunkText = lastChunk.text.replaceAll("\\P{InBasic_Latin}", "")
+
+    val startMentionPos = firstChunkText.length + 1
+    val endMentionPos = middleChunkText.length + startMentionPos + 1
+
+    val text = firstChunkText ++ " " ++ middleChunkText ++ " " ++ lastChunkText
+
     val sentenceRange = splitter.getSentence(text, (startMentionPos, endMentionPos)) match {
       case None => {
         throw new UnparsableException(text, startMentionPos, endMentionPos)
