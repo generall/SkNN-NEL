@@ -16,6 +16,7 @@ object Searcher extends MentionSearcher(
 ) {
 
 
+  /*
   override def findHref(href: String) = {
     println(s"Finding href: $href")
     val res = super.findHref(href)
@@ -29,6 +30,7 @@ object Searcher extends MentionSearcher(
     println(s"Found: ${res.stats.size}")
     res
   }
+  */
 
 
 }

@@ -33,7 +33,7 @@ object Builder {
     * @param groups groups of chunks
     * @return
     */
-  def makeTrain(groups: Iterable[(String, List[ChunkRecord])]): List[TrainObject] = {
+  def makeTrain(groups: Iterable[(String /* state */, List[ChunkRecord])]): List[TrainObject] = {
     groups.map(group => {
       val (state, tokens) = group
       val pattern = "^(NP.*)".r
