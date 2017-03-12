@@ -51,7 +51,7 @@ class SentenceAnalizerTest extends FunSuite {
     val parseRes = analizer.parser.process(str)
 
     val groups = parseRes.zipWithIndex
-      .groupBy({case (record, idx) => (record.parseTag, record.ner, record.groupId)})
+      .groupBy({case (record, idx) => (record.parseTag, ""/*record.ner*/, record.groupId)})
       .toList
       .sortBy(x => x._2.head._2)
       .map(pair => pair._2.map(_._1))
@@ -80,7 +80,7 @@ class SentenceAnalizerTest extends FunSuite {
     parseRes.foreach(println)
 
     val groups = parseRes.zipWithIndex
-      .groupBy({case (record, idx) => (record.parseTag, record.ner, record.groupId)})
+      .groupBy({case (record, idx) => (record.parseTag, ""/*record.ner*/, record.groupId)})
       .toList
       .sortBy(x => x._2.head._2)
       .map(pair => (s"${pair._1._1}", pair._2.map(_._1))) // creation of state

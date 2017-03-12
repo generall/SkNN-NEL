@@ -77,7 +77,7 @@ class SentenceAnalizer {
     val parseRes = parser.process(sentence)
 
     val groups = parseRes.zipWithIndex
-      .groupBy({case (record, idx) => (record.parseTag, record.ner, record.groupId)})
+      .groupBy({case (record, _) => (record.parseTag, 0 /*record.ner*/, record.groupId)})
       .toList
       .sortBy(x => x._2.head._2)
       .map(pair => (s"${pair._1._1}" /* _${pair._1._2} */, pair._2.map(_._1))) // creation of state

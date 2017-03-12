@@ -1,6 +1,7 @@
 package ml.generall.resolver
 
 import ml.generall.elastic.{Chunk, ConceptVariant}
+import ml.generall.resolver.dto.ConceptsAnnotation
 import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 /**
@@ -14,7 +15,7 @@ class ExamplesBuilderTest extends FunSuite with BeforeAndAfterEach {
   }
 
   test("testBuild") {
-    val res = builder.build("http://en.wikipedia.org/wiki/RMS_Titanic")
+    val res = builder.build("http://en.wikipedia.org/wiki/Batman")
     res.foreach(seq => {
       seq.foreach(_.print())
       println()
@@ -80,7 +81,7 @@ class ExamplesBuilderTest extends FunSuite with BeforeAndAfterEach {
   }
 
 
-  test("testBuildFromMention"){
+  test("testBuildFromMention") {
     val firstChunk = Chunk("I am good at")
     val middleChunk = Chunk("science", "url:Science")
     val lastChunk = Chunk("and math")
@@ -95,6 +96,12 @@ class ExamplesBuilderTest extends FunSuite with BeforeAndAfterEach {
       minScore = 1.0
     ))
     builder.buildFromMention(firstChunk, middleChunk, lastChunk, conceptVariant).foreach(_.print())
+  }
+
+  test("customExtendMentionSearch") {
+    val mentionResult = Builder.searchMention("batman")
+    mentionResult.stats.foreach(println)
+
   }
 
 }
