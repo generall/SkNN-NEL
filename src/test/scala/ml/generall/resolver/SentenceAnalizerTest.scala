@@ -2,7 +2,7 @@ package ml.generall.resolver
 
 import ml.generall.common.StupidAssert
 import ml.generall.ner.{ElementMeasures, RecoverConcept}
-import ml.generall.ner.elements.{BagOfWordElement, ContextElement, ContextElementConverter}
+import ml.generall.ner.elements.{BagOfWordElement, ContextElement, ContextElementConverter, OntologyElement}
 import ml.generall.sknn.SkNN
 import ml.generall.sknn.model.storage.PlainAverageStorage
 import ml.generall.sknn.model.{Model, SkNNNode, SkNNNodeImpl}
@@ -22,7 +22,12 @@ class SentenceAnalizerTest extends FunSuite {
 
     val ts = analizer.getTrainingSet(List(("", "http://en.wikipedia.org/wiki/Batman", "")))
 
-    println(ts.size)
+    val concepts = ts.flatMap(_.flatMap(x => x.flatMap {
+      case x: OntologyElement => Some(x.concept)
+      case _ => None
+    }))
+
+    concepts.foreach(println)
   }
 
 

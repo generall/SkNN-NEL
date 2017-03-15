@@ -2,14 +2,22 @@ package ml.generall.ner.elements
 
 import ml.generall.sknn.model.storage.elements.BaseElement
 
+import scala.collection.AbstractIterator
+
 /**
   * Created by generall on 14.08.16.
   */
-class ContextElement(_context: List[BaseElement], element: BaseElement) extends BaseElement {
+class ContextElement(_context: List[BaseElement], element: BaseElement) extends BaseElement with Iterable[BaseElement] {
   val context = _context
   val mainElement = element
   override var label: String = element.label
   override var output: Set[String] = element.output
+
+  override def iterator: Iterator[BaseElement] = mainElement match {
+    case x: MultiElement[_] => x.iterator
+    case x: BaseElement => List(x).iterator
+
+  }
 }
 
 object ContextElementConverter {
