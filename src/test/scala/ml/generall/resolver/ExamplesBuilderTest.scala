@@ -1,7 +1,7 @@
 package ml.generall.resolver
 
-import ml.generall.elastic.{Chunk, ConceptVariant}
-import ml.generall.resolver.dto.ConceptsAnnotation
+import ml.generall.elastic.Chunk
+import ml.generall.resolver.dto.{ConceptVariant, ConceptsAnnotation}
 import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 /**

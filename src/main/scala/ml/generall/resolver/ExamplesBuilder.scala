@@ -6,7 +6,7 @@ import com.sksamuel.elastic4s.{Hit, HitReader}
 import com.sksamuel.elastic4s.ElasticDsl._
 import ml.generall.isDebug
 import ml.generall.resolver.filters.{DummyFilter, SvmFilter}
-import ml.generall.elastic.{Chunk, ConceptVariant}
+import ml.generall.elastic.Chunk
 import ml.generall.nlp._
 import ml.generall.resolver.dto._
 
@@ -35,7 +35,7 @@ object Builder {
   }
 
   /**
-    * Make list of train objects from grouped chunks
+    * Make list of train objects from grouped chunks (used for target sentence)
     *
     * @param groups groups of chunks
     * @return
@@ -64,12 +64,19 @@ object Builder {
   }
 
 
+  /**
+    * Search for possible concepts of mention
+    * @param mention mention text
+    * @param leftContext left context
+    * @param rightContext right context
+    * @return concept variants
+    */
   def searchMention(mention: String, leftContext: String = "", rightContext: String = ""): MentionSearchResult = {
     implicit object MentionHitAs extends HitReader[EnrichedMention] {
 
       override def read(hit: Hit): Either[Throwable, EnrichedMention] = {
         val mentions = hit.sourceAsMap("mentions").asInstanceOf[util.List[util.Map[String, AnyRef]]]
-        val origMention = mentions.find(mention => mention("resolver").asInstanceOf[String] == "wikilink")
+        val origMention = mentions.find(mention => mention("resolver").asInstanceOf[String] == ConceptVariant.WIKILINKS_RESOLVER)
         origMention match {
           case Some(x: util.Map[String, AnyRef]) => {
             Right(mapToMention(x))
@@ -88,7 +95,7 @@ object Builder {
               matchQuery("mentions.context.left", leftContext),
               matchQuery("mentions.context.right", rightContext)
             ).must(
-              matchQuery("mentions.resolver", "wikilink")
+              matchQuery("mentions.resolver", ConceptVariant.WIKILINKS_RESOLVER)
             )
           } scoreMode "Max"
         }
@@ -99,6 +106,13 @@ object Builder {
     new MentionSearchResult(variants)(filterResult)
   }
 
+  /**
+    * Search for sentences with target concept
+    * @param href target concept as wikipedia link
+    * @param leftContext left context
+    * @param rightContext right context
+    * @return Sentence with all mentions
+    */
   def searchMentionsByHref(href: String, leftContext: String = "", rightContext: String = ""): Seq[EnrichedSentence] = {
     implicit object SentenceHitAs extends HitReader[EnrichedSentence] {
       override def read(hit: Hit): Either[Throwable, EnrichedSentence] = {
@@ -144,7 +158,7 @@ object Builder {
               matchQuery("mentions.context.right", rightContext)
             ).must(
               matchQuery("mentions.concepts.link", href),
-              matchQuery("mentions.resolver", "wikilink")
+              matchQuery("mentions.resolver", ConceptVariant.WIKILINKS_RESOLVER)
             )
           } scoreMode "Max"
         }
@@ -193,6 +207,11 @@ object Builder {
     )
   }
 
+  /**
+    * Predicate for skipping rare concepts
+    * @param x concept variant
+    * @return
+    */
   def filterResult(x: ConceptVariant): Boolean = {
     if (x.count <= searcher.thresholdCount) {
       if (isDebug()) println(s"Filter concept: ${x.concept}")
@@ -213,6 +232,65 @@ class ExamplesBuilder {
 
   val parser: CoreNLPTools = LocalCoreNLP
 
+  /**
+    * Build train set for concept (with context)
+    *
+    * @param concept link to DBpedia
+    * @param leftContext
+    * @param rightContext
+    * @return List of train examples converted to TrainObject
+    */
+  def build(concept: String, leftContext: String = "", rightContext: String = ""): List[List[TrainObject]] = {
+    val searchRes = Builder.searchMentionsByHref(concept, leftContext, rightContext)
+
+    FileLogger.logToFile("/tmp/learning.log", concept)
+    FileLogger.logToFile("/tmp/learning.log", "")
+
+    searchRes.map(enrichedSentenceToTrain).toList
+  }
+
+  /**
+    * Convert enriched sentence to train sequence
+    *
+    * @param sentence Enriched sentence from database
+    * @return
+    */
+  def enrichedSentenceToTrain(sentence: EnrichedSentence): List[TrainObject] = {
+    sentence.chunks.map(chunk => {
+      var allConcepts = chunk.getAllMentions
+        .filter(_.resolver != ConceptVariant.WIKILINKS_RESOLVER)
+        .flatMap(_.concepts)
+      val wikilinksMention = chunk.getAllMentions.find(x => x.resolver == ConceptVariant.WIKILINKS_RESOLVER)
+      val state = (wikilinksMention match {
+        case None => selectState(allConcepts) // If no wikilink mention in chunk
+        case Some(x) =>
+          val conceptVar = x.concepts.headOption.map(_.copy(resolver = ConceptVariant.WIKILINKS_RESOLVER))
+          allConcepts = conceptVar.toList ++ allConcepts
+          conceptVar.map(_.concept) // set wikilink concept as state
+      }).getOrElse(chunk.tokens.head.parseTag)
+
+      TrainObject(
+        tokens = chunk.tokens.map(x => (x.lemma, 1.0)),
+        state = state,
+        concepts = allConcepts,
+        resolver = if(wikilinksMention.isDefined) ConceptVariant.WIKILINKS_RESOLVER else ConceptVariant.ELASTIC_RESOLVER
+      )
+    })
+  }
+
+
+  /**
+    * Funtion for selection state of TrainObject by it's context
+    * @param concepts
+    * @return
+    */
+  def selectState(concepts: List[ConceptVariant]): Option[String] = concepts match {
+    // TODO: create more advanced state here
+    case Nil => None
+    case _ => Some(concepts.maxBy(_.count).concept)
+  }
+
+  @Deprecated
   def convertWithoutAnnotations(records: List[ChunkRecord], listBuffer: ListBuffer[TrainObject]) = {
     val groups = records.groupBy(record => (record.parseTag, 0 /* record.ner*/ , record.groupId))
     groups.toSeq.sortBy(x => x._1._3).foreach(group => {
@@ -225,6 +303,7 @@ class ExamplesBuilder {
     })
   }
 
+  @Deprecated
   def convertRecords(records: List[ChunkRecord], annotations: List[ConceptsAnnotation], listBuffer: ListBuffer[TrainObject]): Unit = {
     annotations match {
       case head :: tail => {
@@ -246,11 +325,12 @@ class ExamplesBuilder {
   }
 
   /**
-    *
+    * Build train objects from sentence with annotations
     * @param sentence
     * @param annotations of sentence. Must not overlap!
     * @return
     */
+  @Deprecated
   def buildFromAnnotations(sentence: String, annotations: List[ConceptsAnnotation]): List[TrainObject] = {
     val buf = new ListBuffer[TrainObject]
     val records = parser.process(sentence)
@@ -258,7 +338,7 @@ class ExamplesBuilder {
     buf.toList
   }
 
-
+  @Deprecated
   def buildFromMention(firstChunk: Chunk, middleChunk: Chunk, lastChunk: Chunk, concepts: List[ConceptVariant]): List[TrainObject] = {
 
     val firstChunkText = firstChunk.text.replaceAll("\\P{InBasic_Latin}", "")
@@ -281,43 +361,4 @@ class ExamplesBuilder {
     buildFromAnnotations(sentence, annotations)
   }
 
-  /**
-    * Build train set for concept (with context)
-    *
-    * @param concept link to DBpedia
-    * @param leftContext
-    * @param rightContext
-    * @return List of train examples converted to TrainObject
-    */
-  def build(concept: String, leftContext: String = "", rightContext: String = ""): List[List[TrainObject]] = {
-    val searchRes = Builder.searchMentionsByHref(concept, leftContext, rightContext)
-    val count = searchRes.size
-
-    FileLogger.logToFile("/tmp/learning.log", concept)
-    FileLogger.logToFile("/tmp/learning.log", "")
-
-    searchRes.map(enrichedSentenceToTrain).toList
-  }
-
-  /**
-    * Convert enriched sentence to train sequence
-    *
-    * @param sentence
-    * @return
-    */
-  def enrichedSentenceToTrain(sentence: EnrichedSentence): List[TrainObject] = {
-    sentence.chunks.map(chunk => {
-      TrainObject(
-        tokens = chunk.tokens.map(x => (x.lemma, 1.0)),
-        state = chunk.tokens.head.parseTag, // TODO: create more advanced state here
-        concepts = chunk.getAllMentions.flatMap(_.concepts)
-      )
-    })
-  }
-
 }
-
-//boolQuery.should(
-//matchQuery("mentions.text", mention),
-//matchQuery("mentions.resolver", "wikilink")
-//)

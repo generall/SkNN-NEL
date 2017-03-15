@@ -1,6 +1,7 @@
 package ml.generall.resolver
 
-import ml.generall.elastic.ConceptVariant
+import ml.generall.resolver.dto.ConceptVariant
+
 
 /**
   * Stores chunk of tokens, state and possible concepts
@@ -9,13 +10,14 @@ import ml.generall.elastic.ConceptVariant
 case class TrainObject(
                         tokens:Iterable[(String, Double /* term frequency */)],
                         state: String,
-                        concepts: Iterable[ConceptVariant]
+                        concepts: Iterable[ConceptVariant],
+                        resolver: String = ""
                  ) {
 
   def print() = {
     println(s"state: $state: $tokens")
     concepts.foreach(concept => {
-      println(s"\t${concept.concept} ${concept.count}")
+      println(s"\t${concept.concept} ${concept.count}\t ${concept.resolver}")
     })
   }
 

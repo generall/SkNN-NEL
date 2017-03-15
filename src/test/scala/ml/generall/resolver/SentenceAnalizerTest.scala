@@ -1,19 +1,31 @@
 package ml.generall.resolver
 
 import ml.generall.common.StupidAssert
-import ml.generall.ner.{RecoverConcept, ElementMeasures}
+import ml.generall.ner.{ElementMeasures, RecoverConcept}
 import ml.generall.ner.elements.{BagOfWordElement, ContextElement, ContextElementConverter}
 import ml.generall.sknn.SkNN
 import ml.generall.sknn.model.storage.PlainAverageStorage
-import ml.generall.sknn.model.{SkNNNodeImpl, SkNNNode, Model}
+import ml.generall.sknn.model.{Model, SkNNNode, SkNNNodeImpl}
 import ml.generall.sknn.model.storage.elements.BaseElement
-import ml.generall.elastic.{ConceptVariant, Chunk}
+import ml.generall.elastic.Chunk
+import ml.generall.resolver.dto.ConceptVariant
 import org.scalatest.FunSuite
 
 /**
   * Created by generall on 27.08.16.
   */
 class SentenceAnalizerTest extends FunSuite {
+
+
+  test("testGetTrainingSet") {
+    val analizer = new SentenceAnalizer
+
+    val ts = analizer.getTrainingSet(List(("", "http://en.wikipedia.org/wiki/Batman", "")))
+
+    println(ts.size)
+  }
+
+
 
   test("testAnalyse") {
     val analizer = new SentenceAnalizer
@@ -63,11 +75,20 @@ class SentenceAnalizerTest extends FunSuite {
 
   }
 
+  test("testPrepareSentence") {
+    val str = "Yesterday the Titanic crashed into an iceberg"
+    val analizer = new SentenceAnalizer
+
+    val trains = analizer.prepareSentence(str)
+
+    trains.foreach(_.print())
+  }
+
 
   test("testNewParser") {
 
 
-    val str = "Yesterday Titanic struck Iceberg"
+    val str = "Yesterday Titanic crashed into an iceberg"
 
     val exampleBuilder = new ExamplesBuilder
 

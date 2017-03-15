@@ -1,7 +1,5 @@
 package ml.generall.resolver.dto
 
-import ml.generall.elastic.ConceptVariant
-
 /**
   * Created by generall on 11.03.17.
   */

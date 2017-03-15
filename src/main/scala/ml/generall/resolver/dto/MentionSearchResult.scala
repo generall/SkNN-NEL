@@ -1,6 +1,5 @@
 package ml.generall.resolver.dto
 
-import ml.generall.elastic.ConceptVariant
 import ml.generall.resolver.tools.ProbTools
 
 /**

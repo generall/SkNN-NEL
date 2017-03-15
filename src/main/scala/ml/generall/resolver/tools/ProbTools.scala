@@ -22,4 +22,6 @@ object ProbTools {
     val normCoef = coef.getOrElse(softMaxNormalizationCoef(list))
     list.map(x => Math.exp(num.toDouble(x)) / normCoef)
   }
+
+  def logistic(x: Double, k: Double = 1.0): Double = 2 / (1 + Math.exp(-x / k)) - 1.0
 }

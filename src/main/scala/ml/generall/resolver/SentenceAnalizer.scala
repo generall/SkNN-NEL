@@ -1,12 +1,12 @@
 package ml.generall.resolver
 
-import ml.generall.ner.elements._
+import ml.generall.ner.elements.{ContextElement, _}
 import ml.generall.ner.{ElementMeasures, RecoverConcept}
+import ml.generall.resolver.dto.ConceptVariant
 import ml.generall.sknn.SkNN
 import ml.generall.sknn.model.storage.PlainAverageStorage
 import ml.generall.sknn.model.storage.elements.BaseElement
 import ml.generall.sknn.model.{Model, SkNNNode, SkNNNodeImpl}
-import ml.generall.elastic.ConceptVariant
 
 import scala.collection.mutable
 
@@ -20,11 +20,11 @@ object SentenceAnalizer {
     val context = ContextElementConverter.convertContext(objList, contextSize).toList
     context.foreach({
       case (leftContext, elem, rightContext) =>
-      if (elem.concepts.size > 1) {
-        val leftContextString = leftContext.flatMap(elem => elem.tokens.map(_._1)).mkString(" ")
-        val rightContextString = rightContext.flatMap(elem => elem.tokens.map(_._1)).mkString(" ")
-        elem.concepts.foreach(concept => res = (leftContextString, concept.concept, rightContextString) :: res)
-      }
+        if (elem.concepts.size > 1) {
+          val leftContextString = leftContext.flatMap(elem => elem.tokens.map(_._1)).mkString(" ")
+          val rightContextString = rightContext.flatMap(elem => elem.tokens.map(_._1)).mkString(" ")
+          elem.concepts.foreach(concept => res = (leftContextString, concept.concept, rightContextString) :: res)
+        }
     })
     res
   }
@@ -41,20 +41,20 @@ object SentenceAnalizer {
       case Nil => element
       case List(concept) => {
         val multi = new MultiElement[WeightedSetElement]
-        val onto = new OntologyElement(SentenceAnalizer.wikiToDbpedia(concept.concept))
+        val onto = new OntologyElement(SentenceAnalizer.wikiToDbpedia(concept.concept), conceptWeight = concept.getWeight)
         multi.addElement(onto)
         multi.addElement(element)
-        multi.label = multi.genLabel
+        multi.label = obj.state // multi.genLabel
         multi
       }
       case disambiguation: Iterable[ConceptVariant] => {
         val multi = new MultiElement[WeightedSetElement]
         disambiguation
           .view
-          .map(x => new OntologyElement(SentenceAnalizer.wikiToDbpedia(x.concept)))
+          .map(x => new OntologyElement(SentenceAnalizer.wikiToDbpedia(x.concept), conceptWeight = x.getWeight))
           .foreach(multi.addElement)
         multi.addElement(element)
-        multi.label = multi.genLabel
+        multi.label = obj.state
         multi
       }
     }
@@ -73,20 +73,49 @@ class SentenceAnalizer {
   val parser = LocalCoreNLP
   val exampleBuilder = new ExamplesBuilder
 
-  def prepareSentence(sentence: String): List[TrainObject] ={
+  def prepareSentence(sentence: String): List[TrainObject] = {
     val parseRes = parser.process(sentence)
 
     val groups = parseRes.zipWithIndex
-      .groupBy({case (record, _) => (record.parseTag, 0 /*record.ner*/, record.groupId)})
+      .groupBy({ case (record, _) => (record.parseTag, 0 /*record.ner*/ , record.groupId) })
       .toList
       .sortBy(x => x._2.head._2)
-      .map(pair => (s"${pair._1._1}" /* _${pair._1._2} */, pair._2.map(_._1))) // creation of state
+      .map(pair => (s"${pair._1._1}" /* _${pair._1._2} */ , pair._2.map(_._1))) // creation of state
 
     Builder.makeTrain(groups)
   }
 
 
-  def analyse(sentence: String) = {
+  /**
+    * Filter predicate, keep only OntologyElements
+    *
+    * @return keep element?
+    */
+  def filterSequencePredicate(el: ContextElement): Boolean = el.mainElement match {
+    case x: MultiElement[_] => x.subElements.exists {
+      case _: OntologyElement => true
+      case _ => false
+    }
+    case _: OntologyElement => true
+    case _ => false
+  }
+
+
+  def filterSequence(seq: List[ContextElement]): List[ContextElement] = seq.filter(filterSequencePredicate)
+
+  /**
+    * Prepare training set for disambiguation
+    */
+  def getTrainingSet(conceptsToLearn: List[(String, String, String)]): List[List[ContextElement]] = conceptsToLearn
+    .flatMap(x => exampleBuilder.build(x._2, x._1, x._3))
+    .map(convertToContext)
+
+
+  def convertToContext(objects: List[TrainObject]): List[ContextElement] = filterSequence(
+    ContextElementConverter.convert(objects.map(SentenceAnalizer.toBagOfWordsElement), contextSize))
+
+
+  def analyse(sentence: String): Unit = {
 
     /**
       * Prepare target sentence
@@ -97,7 +126,7 @@ class SentenceAnalizer {
 
     objs.foreach(_.print())
 
-    val target: List[ContextElement] = ContextElementConverter.convert(objs.map(SentenceAnalizer.toBagOfWordsElement), contextSize)
+    val target: List[ContextElement] = convertToContext(objs)
 
     /**
       * All concepts with disambiguation
@@ -112,11 +141,15 @@ class SentenceAnalizer {
     /**
       * Prepare training set from disambiguation
       */
-    val searchResults: List[List[TrainObject]] = conceptsToLearn.flatMap(x => exampleBuilder.build(x._2, x._1, x._3))
 
-    val trainingSet = searchResults.map(sentSeq => {
-      ContextElementConverter.convert(sentSeq.map(SentenceAnalizer.toBagOfWordsElement), contextSize)
-    })
+    val trainingSet = getTrainingSet(conceptsToLearn)
+
+
+    /**
+      * TODO: filtering of concepts
+      * TODO: update of states
+      * TODO: Filter valuable concepts
+      */
 
     val model = new Model[BaseElement, SkNNNode[BaseElement]]((label) => {
       new SkNNNodeImpl[BaseElement, PlainAverageStorage[BaseElement]](label, 1)(() => {
@@ -141,8 +174,8 @@ class SentenceAnalizer {
       }
     })
 
-    val recoveredResult1 = RecoverConcept.recover(target, model.initNode, res(0)._1)
-    println(s"Weight: ${res(0)._2}")
+    val recoveredResult1 = RecoverConcept.recover(target, model.initNode, res.head._1)
+    println(s"Weight: ${res.head._2}")
     objs.zip(recoveredResult1).foreach({ case (obj, node) => println(s"${obj.tokens.mkString(" ")} => ${node.label}") })
 
     /*
