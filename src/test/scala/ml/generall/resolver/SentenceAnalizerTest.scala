@@ -11,6 +11,8 @@ import ml.generall.elastic.Chunk
 import ml.generall.resolver.dto.ConceptVariant
 import org.scalatest.FunSuite
 
+import scala.collection.{immutable, mutable}
+
 /**
   * Created by generall on 27.08.16.
   */
@@ -22,14 +24,13 @@ class SentenceAnalizerTest extends FunSuite {
 
     val ts = analizer.getTrainingSet(List(("", "http://en.wikipedia.org/wiki/Batman", "")))
 
-    val concepts = ts.flatMap(_.flatMap(x => x.flatMap {
-      case x: OntologyElement => Some(x.concept)
+    val categories = ts.flatMap(_.flatMap(x => x.flatMap {
+      case x: OntologyElement => Some(x.features)
       case _ => None
-    }))
+    })).foldLeft(mutable.Map().withDefaultValue(0.0):  mutable.Map[String, Double])( (acc, x) => OntologyElement.joinFeatures(acc, x))
 
-    concepts.foreach(println)
+    categories.toList.sortBy(- _._2).foreach{case (k,v) => println(s"$k \t| $v")}
   }
-
 
 
   test("testAnalyse") {
@@ -68,7 +69,7 @@ class SentenceAnalizerTest extends FunSuite {
     val parseRes = analizer.parser.process(str)
 
     val groups = parseRes.zipWithIndex
-      .groupBy({case (record, idx) => (record.parseTag, ""/*record.ner*/, record.groupId)})
+      .groupBy({ case (record, idx) => (record.parseTag, "" /*record.ner*/ , record.groupId) })
       .toList
       .sortBy(x => x._2.head._2)
       .map(pair => pair._2.map(_._1))
@@ -106,7 +107,7 @@ class SentenceAnalizerTest extends FunSuite {
     parseRes.foreach(println)
 
     val groups = parseRes.zipWithIndex
-      .groupBy({case (record, idx) => (record.parseTag, ""/*record.ner*/, record.groupId)})
+      .groupBy({ case (record, idx) => (record.parseTag, "" /*record.ner*/ , record.groupId) })
       .toList
       .sortBy(x => x._2.head._2)
       .map(pair => (s"${pair._1._1}", pair._2.map(_._1))) // creation of state

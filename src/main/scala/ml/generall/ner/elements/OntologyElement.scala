@@ -3,6 +3,8 @@ package ml.generall.ner.elements
 import ml.generall.ontology.base.GraphClient
 import ml.generall.ontology.structure.{Concept, TraversalFactory}
 
+import scala.collection.mutable
+
 /**
   * Created by generall on 13.08.16.
   */
@@ -14,11 +16,12 @@ class OntologyElement(conceptUrl: String, _label: String = null, conceptWeight: 
     concept.ontology.getTop(_threshold).map(x => (x.category, x.weight * conceptWeight)).toMap
   }
 
-  val sortedFeatureMap = features(OntologyElement.threshold)
+  val sortedFeatureMap: Map[String, Double] = features(OntologyElement.threshold)
 
   override var output: Set[String] = sortedFeatureMap.keySet
 
   override def features: Map[String, Double] = sortedFeatureMap
+
 }
 
 object OntologyElement {
@@ -30,6 +33,18 @@ object OntologyElement {
     val traversal = factory.constructConcept(concept.categories, _threshold)
     concept.ontology = traversal
     concept
+  }
+
+  /**
+    * first should be withDefaultValue(0.0)
+    *
+    * @param first accumulator
+    * @param second map
+    * @return accumulator
+    */
+  def joinFeatures(first: mutable.Map[String, Double], second: Map[String, Double]): mutable.Map[String, Double] = {
+    second.foreach { case (k, v) => first(k) += v }
+    first
   }
 
 }
