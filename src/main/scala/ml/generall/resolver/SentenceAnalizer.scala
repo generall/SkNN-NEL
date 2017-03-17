@@ -93,10 +93,10 @@ class SentenceAnalizer {
     */
   def filterSequencePredicate(el: ContextElement): Boolean = el.mainElement match {
     case x: MultiElement[_] => x.subElements.exists {
-      case _: OntologyElement => true
+      case y: OntologyElement => y.nonEmpty
       case _ => false
     }
-    case _: OntologyElement => true
+    case y: OntologyElement => y.nonEmpty
     case _ => false
   }
 
@@ -108,12 +108,40 @@ class SentenceAnalizer {
     */
   def getTrainingSet(conceptsToLearn: List[(String, String, String)]): List[List[ContextElement]] = conceptsToLearn
     .flatMap(x => exampleBuilder.build(x._2, x._1, x._3))
+    .filter(_.nonEmpty)
     .map(convertToContext)
 
 
   def convertToContext(objects: List[TrainObject]): List[ContextElement] = filterSequence(
     ContextElementConverter.convert(objects.map(SentenceAnalizer.toBagOfWordsElement), contextSize))
 
+
+  def getAllWeightedCategories(trainSet: List[List[ContextElement]]): mutable.Map[String, Double] = trainSet.flatMap(_.flatMap(x => x.flatMap {
+    case x: OntologyElement => Some(x.features)
+    case _ => None
+  })).foldLeft(mutable.Map().withDefaultValue(0.0): mutable.Map[String, Double])((acc, x) => OntologyElement.joinFeatures(acc, x))
+
+  /**
+    * Updates state of all ContextElements with OntologyElement in main element
+    * @param trainSet train set with filtered context elements
+    * @param categoryWeights Map of category weights
+    */
+  def updateStates(trainSet: List[List[ContextElement]], categoryWeights: scala.collection.Map[String, Double]): Unit = {
+    trainSet.foreach(seq => {
+      seq.foreach(elem => {
+        var wikilinksState: Option[String] = None
+        val localMap: mutable.Map[String, Double] = mutable.Map().withDefaultValue(0.0)
+        elem.foldLeft(localMap) {
+          case (acc, x: OntologyElement) =>
+            if(x.weight == 1.0) wikilinksState = Some(x.label)
+            OntologyElement.joinFeatures(acc, x.features)
+          case (acc, _) => acc
+        }
+        val (state, _) = localMap.maxBy { case (k, v) => v * categoryWeights(k) }
+        elem.label = wikilinksState.getOrElse(state)
+      })
+    })
+  }
 
   def analyse(sentence: String): Unit = {
 
@@ -144,12 +172,16 @@ class SentenceAnalizer {
 
     val trainingSet = getTrainingSet(conceptsToLearn)
 
-
     /**
-      * TODO: filtering of concepts
-      * TODO: update of states
-      * TODO: Filter valuable concepts
+      * Update of the states
       */
+    val categories = getAllWeightedCategories(trainingSet)
+    updateStates(trainingSet, categories)
+
+
+    // TODO: resolve concepts derirects
+    // TODO: Filter valuable concepts
+
 
     val model = new Model[BaseElement, SkNNNode[BaseElement]]((label) => {
       new SkNNNodeImpl[BaseElement, PlainAverageStorage[BaseElement]](label, 1)(() => {

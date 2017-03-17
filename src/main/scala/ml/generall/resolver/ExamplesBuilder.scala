@@ -161,7 +161,7 @@ object Builder {
               matchQuery("mentions.resolver", ConceptVariant.WIKILINKS_RESOLVER)
             )
           } scoreMode "Max"
-        }
+        } limit 100 // TODO: Hyperparameter
       }.await
     }).map(_._1)
   }

@@ -9,6 +9,9 @@ import scala.collection.mutable
   * Created by generall on 13.08.16.
   */
 class OntologyElement(conceptUrl: String, _label: String = null, conceptWeight: Double = 1.0) extends WeightedSetElement {
+
+  val weight: Double = conceptWeight
+
   override var label: String = if (_label == null) conceptUrl else _label
   var concept: Concept = OntologyElement.constructConcept(new Concept(conceptUrl))
 
@@ -21,6 +24,8 @@ class OntologyElement(conceptUrl: String, _label: String = null, conceptWeight: 
   override var output: Set[String] = sortedFeatureMap.keySet
 
   override def features: Map[String, Double] = sortedFeatureMap
+
+  def nonEmpty: Boolean = features.nonEmpty
 
 }
 

@@ -18,18 +18,33 @@ import scala.collection.{immutable, mutable}
   */
 class SentenceAnalizerTest extends FunSuite {
 
+  def time[R](block: => R): R = {
+    val t0 = System.currentTimeMillis()
+    val result = block    // call-by-name
+    val t1 = System.currentTimeMillis()
+    println("Elapsed time: " + (t1 - t0) + "ms")
+    result
+  }
+
 
   test("testGetTrainingSet") {
     val analizer = new SentenceAnalizer
 
-    val ts = analizer.getTrainingSet(List(("", "http://en.wikipedia.org/wiki/Batman", "")))
+    val ts = analizer.getTrainingSet(List(
+      ("", "http://en.wikipedia.org/wiki/Batman", ""),
+      ("", "http://en.wikipedia.org/wiki/Batman:_Year_One", "")
+    ))
 
-    val categories = ts.flatMap(_.flatMap(x => x.flatMap {
-      case x: OntologyElement => Some(x.features)
-      case _ => None
-    })).foldLeft(mutable.Map().withDefaultValue(0.0):  mutable.Map[String, Double])( (acc, x) => OntologyElement.joinFeatures(acc, x))
+    val categories = time { analizer.getAllWeightedCategories(ts) }
 
-    categories.toList.sortBy(- _._2).foreach{case (k,v) => println(s"$k \t| $v")}
+    time {analizer.updateStates(ts, categories)}
+
+    ts.foreach( seq => {
+      seq.foreach(x => println(x.label))
+      println("---")
+    })
+
+    //categories.toList.sortBy(- _._2).foreach{case (k,v) => println(s"$k \t| $v")}
   }
 
 

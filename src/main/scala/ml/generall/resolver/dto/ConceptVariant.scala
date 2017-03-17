@@ -17,6 +17,10 @@ case class ConceptVariant(
                            var avgSoftMax: Double = 0.0,
                            var resolver: String = ""
                          ) {
+  /**
+    * Returns variant weight.
+    * @return weight. Max = 1.0 (wikilinks)
+    */
   def getWeight: Double = if (resolver == ConceptVariant.WIKILINKS_RESOLVER) 1.0 else ProbTools.logistic( avgScore * count, 20.0) // TODO: Hyperparam
 }
 
