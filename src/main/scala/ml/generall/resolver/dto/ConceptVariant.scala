@@ -16,10 +16,10 @@ case class ConceptVariant(
                            var avgNorm: Double = 0.0,
                            var avgSoftMax: Double = 0.0,
                            var resolver: String = ""
-                         ) {
+                         ) extends Serializable {
   /**
     * Returns variant weight.
-    * @return weight. Max = 1.0 (wikilinks)
+    * @return weight. Max = 1.0 (for Wikilinks)
     */
   def getWeight: Double = if (resolver == ConceptVariant.WIKILINKS_RESOLVER) 1.0 else ProbTools.logistic( avgScore * count, 20.0) // TODO: Hyperparam
 }

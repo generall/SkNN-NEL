@@ -1,6 +1,6 @@
 package ml.generall.resolver
 
-import ml.generall.common.StupidAssert
+import ml.generall.common.{StupidAssert, Tools}
 import ml.generall.ner.{ElementMeasures, RecoverConcept}
 import ml.generall.ner.elements.{BagOfWordElement, ContextElement, ContextElementConverter, OntologyElement}
 import ml.generall.sknn.SkNN
@@ -18,13 +18,6 @@ import scala.collection.{immutable, mutable}
   */
 class SentenceAnalizerTest extends FunSuite {
 
-  def time[R](block: => R): R = {
-    val t0 = System.currentTimeMillis()
-    val result = block    // call-by-name
-    val t1 = System.currentTimeMillis()
-    println("Elapsed time: " + (t1 - t0) + "ms")
-    result
-  }
 
 
   test("testGetTrainingSet") {
@@ -35,9 +28,9 @@ class SentenceAnalizerTest extends FunSuite {
       ("", "http://en.wikipedia.org/wiki/Batman:_Year_One", "")
     ))
 
-    val categories = time { analizer.getAllWeightedCategories(ts) }
+    val categories = Tools.time { analizer.getAllWeightedCategories(ts) }
 
-    time {analizer.updateStates(ts, categories)}
+    Tools.time {analizer.updateStates(ts, categories)}
 
     ts.foreach( seq => {
       seq.foreach(x => println(x.label))
@@ -127,7 +120,7 @@ class SentenceAnalizerTest extends FunSuite {
       .sortBy(x => x._2.head._2)
       .map(pair => (s"${pair._1._1}", pair._2.map(_._1))) // creation of state
 
-    val objs = Builder.makeTrain(groups)
+    val objs = exampleBuilder.makeTrain(groups)
 
     objs.foreach(_.print())
 

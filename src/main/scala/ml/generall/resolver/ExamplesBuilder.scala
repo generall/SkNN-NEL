@@ -13,13 +13,7 @@ import ml.generall.resolver.dto._
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConversions._
 
-
-/**
-  * Created by generall on 27.08.16.
-  */
-
-object Builder {
-
+trait BuilderInterface {
   val searcher = Searcher
 
   val mentionFilter = SvmFilter
@@ -34,34 +28,16 @@ object Builder {
     mentionFilter.filter(tokens, weights)
   }
 
-  /**
-    * Make list of train objects from grouped chunks (used for target sentence)
-    *
-    * @param groups groups of chunks
-    * @return
-    */
-  def makeTrain(groups: Iterable[(String /* state */ , List[ChunkRecord])]): List[TrainObject] = {
-    groups.map(group => {
-      val (state, tokens) = group
-      val pattern = "^(NP.*)".r
-      state match {
-        case pattern(_) => {
-          val text = tokens.map(_.word).mkString(" ")
-          val weights = tokens.map(weightFu)
-          val variants = if (mentionFilter.filter(tokens, weights))
-            searchMention(text).stats
-          else {
-            if (isDebug()) println(s"Filter mention: $text")
-            Nil
-          }
-          TrainObject(tokens.zip(weights).map(x => (x._1.lemma, x._2)), state, variants)
-        }
-        case _ =>
-          val weights = tokens.map(weightFu)
-          TrainObject(tokens.zip(weights).map(x => (x._1.lemma, x._2)), state, Nil)
-      }
-    }).toList
-  }
+  def searchMention(mention: String, leftContext: String = "", rightContext: String = ""): MentionSearchResult
+
+  def searchMentionsByHref(href: String, leftContext: String = "", rightContext: String = ""): Seq[EnrichedSentence]
+}
+
+/**
+  * Created by generall on 27.08.16.
+  */
+
+object Builder extends BuilderInterface{
 
 
   /**
@@ -71,7 +47,7 @@ object Builder {
     * @param rightContext right context
     * @return concept variants
     */
-  def searchMention(mention: String, leftContext: String = "", rightContext: String = ""): MentionSearchResult = {
+  override def searchMention(mention: String, leftContext: String = "", rightContext: String = ""): MentionSearchResult = {
     implicit object MentionHitAs extends HitReader[EnrichedMention] {
 
       override def read(hit: Hit): Either[Throwable, EnrichedMention] = {
@@ -98,7 +74,7 @@ object Builder {
               matchQuery("mentions.resolver", ConceptVariant.WIKILINKS_RESOLVER)
             )
           } scoreMode "Max"
-        }
+        } limit 100
       }.await
     }).groupBy(_._1.concepts.head.concept)
       .map({ case (concept, pairs) => calcStat(concept, pairs.map(_._2)) })
@@ -113,7 +89,7 @@ object Builder {
     * @param rightContext right context
     * @return Sentence with all mentions
     */
-  def searchMentionsByHref(href: String, leftContext: String = "", rightContext: String = ""): Seq[EnrichedSentence] = {
+  override def searchMentionsByHref(href: String, leftContext: String = "", rightContext: String = ""): Seq[EnrichedSentence] = {
     implicit object SentenceHitAs extends HitReader[EnrichedSentence] {
       override def read(hit: Hit): Either[Throwable, EnrichedSentence] = {
 
@@ -226,11 +202,11 @@ object Builder {
 
 class ExamplesBuilder {
 
-  val searcher = Searcher
-
   val splitter: SentenceSplitter = LocalSplitter
 
   val parser: CoreNLPTools = LocalCoreNLP
+
+  var builder: BuilderInterface = Builder
 
   /**
     * Build train set for concept (with context)
@@ -241,7 +217,7 @@ class ExamplesBuilder {
     * @return List of train examples converted to TrainObject
     */
   def build(concept: String, leftContext: String = "", rightContext: String = ""): List[List[TrainObject]] = {
-    val searchRes = Builder.searchMentionsByHref(concept, leftContext, rightContext)
+    val searchRes = builder.searchMentionsByHref(concept, leftContext, rightContext)
 
     FileLogger.logToFile("/tmp/learning.log", concept)
     FileLogger.logToFile("/tmp/learning.log", "")
@@ -278,6 +254,34 @@ class ExamplesBuilder {
     })
   }
 
+  /**
+    * Make list of train objects from grouped chunks (used for target sentence)
+    *
+    * @param groups groups of chunks
+    * @return
+    */
+  def makeTrain(groups: Iterable[(String /* state */ , List[ChunkRecord])]): List[TrainObject] = {
+    groups.map(group => {
+      val (state, tokens) = group
+      val pattern = "^(NP.*)".r
+      state match {
+        case pattern(_) => {
+          val text = tokens.map(_.word).mkString(" ")
+          val weights = tokens.map(builder.weightFu)
+          val variants = if (builder.mentionFilter.filter(tokens, weights))
+            builder.searchMention(text).stats
+          else {
+            if (isDebug()) println(s"Filter mention: $text")
+            Nil
+          }
+          TrainObject(tokens.zip(weights).map(x => (x._1.lemma, x._2)), state, variants)
+        }
+        case _ =>
+          val weights = tokens.map(builder.weightFu)
+          TrainObject(tokens.zip(weights).map(x => (x._1.lemma, x._2)), state, Nil)
+      }
+    }).toList
+  }
 
   /**
     * Funtion for selection state of TrainObject by it's context
@@ -285,7 +289,6 @@ class ExamplesBuilder {
     * @return
     */
   def selectState(concepts: List[ConceptVariant]): Option[String] = concepts match {
-    // TODO: create more advanced state here
     case Nil => None
     case _ => Some(concepts.maxBy(_.count).concept)
   }

@@ -82,7 +82,7 @@ class SentenceAnalizer {
       .sortBy(x => x._2.head._2)
       .map(pair => (s"${pair._1._1}" /* _${pair._1._2} */ , pair._2.map(_._1))) // creation of state
 
-    Builder.makeTrain(groups)
+    exampleBuilder.makeTrain(groups)
   }
 
 
@@ -183,7 +183,7 @@ class SentenceAnalizer {
     // TODO: Filter valuable concepts
 
 
-    val model = new Model[BaseElement, SkNNNode[BaseElement]]((label) => {
+    val model: Model[BaseElement, SkNNNode[BaseElement]] = new Model[BaseElement, SkNNNode[BaseElement]]((label) => {
       new SkNNNodeImpl[BaseElement, PlainAverageStorage[BaseElement]](label, 1)(() => {
         new PlainAverageStorage[BaseElement](ElementMeasures.bagOfWordElementDistance)
       })
