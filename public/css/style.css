@@ -1,0 +1,27 @@
+.chunk {
+  display: inline-block;
+}
+
+
+.pos-NP {
+  color: #597DA3;
+}
+
+.vote-up {
+  color: darkgreen;
+  text-decoration: none;
+}
+
+.vote-down {
+  color: orange;
+  text-decoration: none;
+}
+
+
+.voted-up {
+  color: green;
+}
+
+.voted-down {
+  color: red;
+}
