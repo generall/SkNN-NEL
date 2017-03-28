@@ -8,8 +8,8 @@ import scala.collection.AbstractIterator
   * Created by generall on 14.08.16.
   */
 class ContextElement(_context: List[BaseElement], element: BaseElement) extends BaseElement with Iterable[BaseElement] {
-  val context = _context
-  val mainElement = element
+  val context: List[BaseElement] = _context
+  val mainElement: BaseElement = element
   override var label: String = element.label
   override var output: Set[String] = element.output
 
@@ -50,8 +50,8 @@ object ContextElementConverter {
 
   def makeVariants(contextElement: ContextElement): List[ContextElement] = {
     contextElement.mainElement match {
-      case multiElement: MultiElement[BaseElement] => multiElement.subElements.map(subElement => changeMainElement(contextElement, subElement))
-      case el: BaseElement => List(contextElement)
+      case multiElement: MultiElement[_] => multiElement.subElements.map(subElement => changeMainElement(contextElement, subElement))
+      case _: BaseElement => List(contextElement)
     }
   }
 }

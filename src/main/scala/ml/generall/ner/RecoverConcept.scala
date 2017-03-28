@@ -13,7 +13,7 @@ object RecoverConcept {
 
     element match {
       case setElement: SetElement => setElement
-      case multiElement: MultiElement[BaseElement] =>
+      case multiElement: MultiElement[_] =>
         multiElement.subElements.minBy(el => node.calcDistance(el, nextNode))
     }
   }

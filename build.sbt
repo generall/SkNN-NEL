@@ -31,6 +31,19 @@ libraryDependencies += "org.typelevel" %% "scalaz-outlaws" % "0.2"
 libraryDependencies += "com.sksamuel.elastic4s" %% "elastic4s-core" % "5.2.8"
 libraryDependencies += "com.sksamuel.elastic4s" %% "elastic4s-tcp" % "5.2.8"
 
+libraryDependencies ++= {
+  val akkaV = "2.3.9"
+  val sprayV = "1.3.3"
+  Seq(
+    "io.spray"            %%  "spray-can"     % sprayV,
+    "io.spray"            %%  "spray-routing-shapeless2" % sprayV,
+    "io.spray"            %%  "spray-json"    % "1.3.2",
+    "io.spray"            %%  "spray-testkit" % sprayV  % "test",
+    "com.typesafe.akka"   %%  "akka-actor"    % akkaV,
+    "com.typesafe.akka"   %%  "akka-testkit"  % akkaV   % "test",
+    "org.specs2"          %%  "specs2-core"   % "2.3.11" % "test"
+  )
+}
 
 /*
  * Needs for CoreNLP
