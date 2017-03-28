@@ -1,14 +1,16 @@
 package ml.generall.resolver
 
-import ml.generall.common.{StupidAssert, Tools}
+import ml.generall.common.StupidAssert
 import ml.generall.ner.{ElementMeasures, RecoverConcept}
-import ml.generall.ner.elements.{BagOfWordElement, ContextElement, ContextElementConverter, OntologyElement}
+import ml.generall.ner.elements._
 import ml.generall.sknn.SkNN
 import ml.generall.sknn.model.storage.PlainAverageStorage
 import ml.generall.sknn.model.{Model, SkNNNode, SkNNNodeImpl}
 import ml.generall.sknn.model.storage.elements.BaseElement
 import ml.generall.elastic.Chunk
+import ml.generall.ontology.structure.Concept
 import ml.generall.resolver.dto.ConceptVariant
+import ml.generall.resolver.tools.Tools
 import org.scalatest.FunSuite
 
 import scala.collection.{immutable, mutable}
@@ -19,7 +21,6 @@ import scala.collection.{immutable, mutable}
 class SentenceAnalizerTest extends FunSuite {
 
 
-
   test("testGetTrainingSet") {
     val analizer = new SentenceAnalizer
 
@@ -28,11 +29,15 @@ class SentenceAnalizerTest extends FunSuite {
       ("", "http://en.wikipedia.org/wiki/Batman:_Year_One", "")
     ))
 
-    val categories = Tools.time { analizer.getAllWeightedCategories(ts) }
+    val categories = Tools.time {
+      analizer.getAllWeightedCategories(ts)
+    }
 
-    Tools.time {analizer.updateStates(ts, categories)}
+    Tools.time {
+      analizer.updateStates(ts, categories)
+    }
 
-    ts.foreach( seq => {
+    ts.foreach(seq => {
       seq.foreach(x => println(x.label))
       println("---")
     })
@@ -90,112 +95,140 @@ class SentenceAnalizerTest extends FunSuite {
   }
 
   test("testPrepareSentence") {
-    val str = "Yesterday the Titanic crashed into an iceberg"
-    val analizer = new SentenceAnalizer
+    val str = "Titanic crashed into iceberg"
+    val analyzer = new SentenceAnalizer
 
-    val trains = analizer.prepareSentence(str)
+    analyzer.exampleBuilder.builder = BuilderMockup
+
+    val trains = analyzer.prepareSentence(str)
 
     trains.foreach(_.print())
   }
 
+  test("testProfilegetTrainingSet") {
+
+    val analyzer = new SentenceAnalizer
+
+    analyzer.exampleBuilder.builder = BuilderMockup
+
+
+    val trainingSet: List[List[ContextElement]] = Tools.time(analyzer.getTrainingSet(List(("", "http://en.wikipedia.org/wiki/RMS_Titanic", ""))), "getTrainingSet")
+
+    println(trainingSet.size)
+
+  }
+
+  test("testProfileBagOfWords") {
+
+    val vars = List(
+      "http://en.wikipedia.org/wiki/Titanic_(1997_film)",
+      "http://en.wikipedia.org/wiki/RMS_Titanic",
+      "http://en.wikipedia.org/wiki/Titanic",
+      "http://en.wikipedia.org/wiki/Iceberg_Theory",
+      "http://en.wikipedia.org/wiki/Iceberg_(fashion_house)",
+      "http://en.wikipedia.org/wiki/Iceberg",
+      "http://en.wikipedia.org/wiki/James_Cameron"
+    )
+
+
+    val bow = vars.map(x => Tools.time(new OntologyElement(SentenceAnalizer.wikiToDbpedia(x)), "OntologyElement " + x))
+
+    print(bow.size)
+  }
 
   test("testNewParser") {
 
+    val analyzer = new SentenceAnalizer
 
-    val str = "Yesterday Titanic crashed into an iceberg"
+    analyzer.exampleBuilder.builder = BuilderMockup
 
-    val exampleBuilder = new ExamplesBuilder
+    val sentence = "Titanic hit iceberg"
+    //val sentence = "James Cameron made Titanic"
 
-    val contextSize = 5
+    /**
+      * Prepare target sentence
+      */
+    val objects = Tools.time(analyzer.prepareSentence(sentence), "prepareSentence")
 
-    val parser = LocalCoreNLP
-
-    val parseRes = parser.process(str)
-
-    parseRes.foreach(println)
-
-    val groups = parseRes.zipWithIndex
-      .groupBy({ case (record, idx) => (record.parseTag, "" /*record.ner*/ , record.groupId) })
-      .toList
-      .sortBy(x => x._2.head._2)
-      .map(pair => (s"${pair._1._1}", pair._2.map(_._1))) // creation of state
-
-    val objs = exampleBuilder.makeTrain(groups)
-
-    objs.foreach(_.print())
+    /**
+      * Get context element description
+      */
+    val target: List[ContextElement] = Tools.time(analyzer.convertToContext(objects), "convertToContext")
 
     /**
       * All concepts with disambiguation
       */
-    val conceptsToLearn: List[(String, String, String)] = SentenceAnalizer.getConceptsToLearn(objs, contextSize)
+    val conceptsToLearn: List[(String, String, String)] = Tools.time(SentenceAnalizer.getConceptsToLearn(objects, analyzer.contextSize), "getConceptsToLearn")
 
-    println("conceptsToLearn: ")
-    conceptsToLearn.foreach(println)
+    /**
+      * Prepare training set from disambiguation
+      */
 
-    val target = ContextElementConverter.convert(objs.map(SentenceAnalizer.toBagOfWordsElement), contextSize)
+    val trainingSet: List[List[ContextElement]] = Tools.time(analyzer.getTrainingSet(conceptsToLearn), "getTrainingSet")
 
+    /**
+      * Update of the states
+      */
+    val categories = Tools.time(analyzer.getAllWeightedCategories(trainingSet), "getAllWeightedCategories")
 
-    val searchResults = List(
-      exampleBuilder.buildFromMention(
-        Chunk("1912 On its maiden voyage, the British ocean liner"),
-        Chunk("RMS Titanic"),
-        Chunk("struck an iceberg in the North Atlantic Ocean at about 11:40 pm ship'\ns time"),
-        List(ConceptVariant("http://en.wikipedia.org/wiki/RMS_Titanic"))
-      ),
-      exampleBuilder.buildFromMention(
-        Chunk("That moonless night of 14 April 1912 when the mighty"),
-        Chunk("RMS Titanic"),
-        Chunk("with 2,223 souls on board collided 37 seconds after the sighting of a partic\nular iceberg and the fateful annoucement by lookouts, \"Iceberg right ahead!\" There"),
-        List(ConceptVariant("http://en.wikipedia.org/wiki/RMS_Titanic"))
-      ),
-      exampleBuilder.buildFromMention(
-        Chunk("Southern Man Saturday, April 14, 2012 Shipwrecks and the Social Contract On this day a century ago the RMS"),
-        Chunk("Titanic"),
-        Chunk(", while on her maiden voyage from England to the United States, was mortally wounded when she grazed an iceberg that tore open her side."),
-        List(ConceptVariant("http://en.wikipedia.org/wiki/Titanic_(1997_film)"))
-      ),
-      exampleBuilder.buildFromMention(
-        Chunk("from them again. Tuld and Cohen intend to cash in on the crisis. They’re flipsides of the same tainted coin. ‘Margin Call’ is like ‘"),
-        Chunk("Titanic"),
-        Chunk("’ from the moment it hits the iceberg. Except, here, everyone survives. Even Eric Dale. They’re all on life-jackets out at sea, searching for land"),
-        List(ConceptVariant("http://en.wikipedia.org/wiki/Titanic_(1997_film)"))
-      )
-    )
-
-    val trainingSet = searchResults.map(sentSeq => {
-      println("\n ------------------------------------------ \n")
-      sentSeq.foreach(_.print())
-      ContextElementConverter.convert(sentSeq.map(SentenceAnalizer.toBagOfWordsElement), contextSize)
-    })
-
-    val model = new Model[BaseElement, SkNNNode[BaseElement]]((label) => {
-      new SkNNNodeImpl[BaseElement, PlainAverageStorage[BaseElement]](label, 1)(() => {
-        new PlainAverageStorage[BaseElement](ElementMeasures.bagOfWordElementDistance)
-      })
-    })
-
-    trainingSet.foreach(seq => model.processSequenceImpl(seq)(onto => List((onto.label, onto))))
-
-    val sknn = new SkNN[BaseElement, SkNNNode[BaseElement]](model)
+    Tools.time(analyzer.updateStates(trainingSet, categories), "updateStates")
 
 
-    val res = sknn.tag(target, 1)((elem, node) => {
-      elem match {
-        case contextElement: ContextElement => contextElement.mainElement match {
-          case bow: BagOfWordElement => bow.label == node.label
-          case _ => true
-        }
-        case _ => true
-      }
-    })
+    // TODO: resolve concepts redirects
+    // TODO: Filter valuable concepts
+
+    /**
+      * Learn model
+      */
+    val (sknn, model) = Tools.time(analyzer.learnModel(trainingSet), "learnModel")
+
+    /**
+      * Tag sequence, return possible combinations with weight
+      * < List[(List[Node], Double)] >
+      */
+    val res = Tools.time(sknn.tag(target, 1)(analyzer.filterNodes), "tag")
+
+    def printStates(l: List[BaseElement]) = {
+      println("-----")
+      l.foreach(x => println(x.label))
+    }
+
+    printStates(trainingSet(0))
+    printStates(trainingSet(1))
+    printStates(trainingSet(2))
+    printStates(trainingSet(100))
+    printStates(trainingSet(101))
+    printStates(trainingSet(102))
+
+    println(" ---------- ")
+
+    res.head._1.foreach(node => println(node.label))
 
 
-    println("\n =========== Result ========= \n")
+    val recoveredResult1 = RecoverConcept.recover(target, model.initNode, res.head._1)
+    println(s"Weight: ${res.head._2}")
+    objects.zip(recoveredResult1).foreach({ case (obj, node) => println(s"${obj.tokens.mkString(" ")} => ${node.label}") })
 
-    val recoveredResult1 = RecoverConcept.recover(target, model.initNode, res(0)._1)
-    println(s"Weight: ${res(0)._2}")
-    objs.zip(recoveredResult1).foreach({ case (obj, node) => println(s"${obj.tokens.mkString(" ")} => ${node.label}") })
+  }
 
+  test("testModelBuilding") {
+    val analyzer = new SentenceAnalizer
+
+    val titanic = new MultiElement[BaseElement]
+    titanic.addElement(new OntologyElement(SentenceAnalizer.wikiToDbpedia("http://en.wikipedia.org/wiki/Titanic_(1997_film)")))
+    titanic.addElement(new OntologyElement(SentenceAnalizer.wikiToDbpedia("http://en.wikipedia.org/wiki/RMS_Titanic")))
+
+    val iceberg = new MultiElement[BaseElement]
+    iceberg.addElement(new OntologyElement(SentenceAnalizer.wikiToDbpedia("http://en.wikipedia.org/wiki/Iceberg_Theory")))
+    iceberg.addElement(new OntologyElement(SentenceAnalizer.wikiToDbpedia("http://en.wikipedia.org/wiki/Iceberg")))
+
+    val trainContext = ContextElementConverter.convert(List(titanic, iceberg), 1)
+
+    assert(trainContext.size == 2)
+
+    val (sknn, model) = analyzer.learnModel(List(trainContext))
+
+    assert(model.nodes.size > 2)
   }
 
 }

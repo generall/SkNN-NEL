@@ -3,6 +3,7 @@ package ml.generall.resolver
 import ml.generall.ner.elements.{ContextElement, _}
 import ml.generall.ner.{ElementMeasures, RecoverConcept}
 import ml.generall.resolver.dto.ConceptVariant
+import ml.generall.resolver.tools.Tools
 import ml.generall.sknn.SkNN
 import ml.generall.sknn.model.storage.PlainAverageStorage
 import ml.generall.sknn.model.storage.elements.BaseElement
@@ -42,17 +43,21 @@ object SentenceAnalizer {
       case List(concept) => {
         val multi = new MultiElement[WeightedSetElement]
         val onto = new OntologyElement(SentenceAnalizer.wikiToDbpedia(concept.concept), conceptWeight = concept.getWeight)
-        multi.addElement(onto)
+        if (onto.features.nonEmpty)
+          multi.addElement(onto)
         multi.addElement(element)
         multi.label = obj.state // multi.genLabel
         multi
       }
       case disambiguation: Iterable[ConceptVariant] => {
         val multi = new MultiElement[WeightedSetElement]
+
         disambiguation
           .view
           .map(x => new OntologyElement(SentenceAnalizer.wikiToDbpedia(x.concept), conceptWeight = x.getWeight))
+          .filter(element => element.features.nonEmpty)
           .foreach(multi.addElement)
+
         multi.addElement(element)
         multi.label = obj.state
         multi
@@ -74,7 +79,7 @@ class SentenceAnalizer {
   val exampleBuilder = new ExamplesBuilder
 
   def prepareSentence(sentence: String): List[TrainObject] = {
-    val parseRes = parser.process(sentence)
+    val parseRes = Tools.time(parser.process(sentence), "parser")
 
     val groups = parseRes.zipWithIndex
       .groupBy({ case (record, _) => (record.parseTag, 0 /*record.ner*/ , record.groupId) })
@@ -107,9 +112,11 @@ class SentenceAnalizer {
     * Prepare training set for disambiguation
     */
   def getTrainingSet(conceptsToLearn: List[(String, String, String)]): List[List[ContextElement]] = conceptsToLearn
+    .par
     .flatMap(x => exampleBuilder.build(x._2, x._1, x._3))
     .filter(_.nonEmpty)
     .map(convertToContext)
+    .toList
 
 
   def convertToContext(objects: List[TrainObject]): List[ContextElement] = filterSequence(
@@ -123,54 +130,81 @@ class SentenceAnalizer {
 
   /**
     * Updates state of all ContextElements with OntologyElement in main element
-    * @param trainSet train set with filtered context elements
+    *
+    * @param trainSet        train set with filtered context elements
     * @param categoryWeights Map of category weights
     */
   def updateStates(trainSet: List[List[ContextElement]], categoryWeights: scala.collection.Map[String, Double]): Unit = {
     trainSet.foreach(seq => {
       seq.foreach(elem => {
-        var wikilinksState: Option[String] = None
+        var wikilinksFeatures: Option[Map[String, Double]] = None
         val localMap: mutable.Map[String, Double] = mutable.Map().withDefaultValue(0.0)
         elem.foldLeft(localMap) {
           case (acc, x: OntologyElement) =>
-            if(x.weight == 1.0) wikilinksState = Some(x.label)
+            if (x.weight == 1.0) wikilinksFeatures = Some(x.features)
             OntologyElement.joinFeatures(acc, x.features)
           case (acc, _) => acc
         }
-        val (state, _) = localMap.maxBy { case (k, v) => v * categoryWeights(k) }
-        elem.label = wikilinksState.getOrElse(state)
+        val (state, _) = wikilinksFeatures.getOrElse(localMap).maxBy { case (k, v) => v * categoryWeights.getOrElse(k, 0.0) }
+        elem.label = state
       })
     })
   }
+
+  type SkNNClassifier = SkNN[BaseElement, SkNNNode[BaseElement]]
+  type SkNNModel = Model[BaseElement, SkNNNode[BaseElement]]
+
+  def learnModel(trainingSet: List[List[ContextElement]]): (SkNNClassifier, SkNNModel) = {
+    val model: SkNNModel = new SkNNModel((label) => {
+      new SkNNNodeImpl[BaseElement, PlainAverageStorage[BaseElement]](label, 1)(() => {
+        new PlainAverageStorage[BaseElement](ElementMeasures.bagOfWordElementDistance)
+      })
+    })
+
+    trainingSet.foreach(model.processSequence)
+
+    val sknn = new SkNNClassifier(model)
+
+    (sknn, model)
+  }
+
+  /**
+    * This function should filter acceptable nodes for vertex
+    */
+  val filterNodes: (BaseElement, SkNNNode[BaseElement]) => Boolean = (_: BaseElement, node: SkNNNode[BaseElement]) => true
+
+  /* {
+    elem match {
+      case contextElement: ContextElement => contextElement.mainElement match {
+        case bow: BagOfWordElement => bow.label == node.label
+        case _ => true
+      }
+      case _ => true
+    }
+  } */
 
   def analyse(sentence: String): Unit = {
 
     /**
       * Prepare target sentence
       */
+    val objects = prepareSentence(sentence)
 
-    val objs = prepareSentence(sentence)
-
-
-    objs.foreach(_.print())
-
-    val target: List[ContextElement] = convertToContext(objs)
+    /**
+      * Get context element description
+      */
+    val target: List[ContextElement] = convertToContext(objects)
 
     /**
       * All concepts with disambiguation
       */
-    val conceptsToLearn: List[(String, String, String)] = SentenceAnalizer.getConceptsToLearn(objs, contextSize)
-
-
-    println("conceptsToLearn: ")
-    conceptsToLearn.foreach(println)
-
+    val conceptsToLearn: List[(String, String, String)] = SentenceAnalizer.getConceptsToLearn(objects, contextSize)
 
     /**
       * Prepare training set from disambiguation
       */
 
-    val trainingSet = getTrainingSet(conceptsToLearn)
+    val trainingSet: List[List[ContextElement]] = getTrainingSet(conceptsToLearn)
 
     /**
       * Update of the states
@@ -179,42 +213,25 @@ class SentenceAnalizer {
     updateStates(trainingSet, categories)
 
 
-    // TODO: resolve concepts derirects
+    // TODO: resolve concepts redirects
     // TODO: Filter valuable concepts
 
+    /**
+      * Learn model
+      */
+    val (sknn, model) = learnModel(trainingSet)
 
-    val model: Model[BaseElement, SkNNNode[BaseElement]] = new Model[BaseElement, SkNNNode[BaseElement]]((label) => {
-      new SkNNNodeImpl[BaseElement, PlainAverageStorage[BaseElement]](label, 1)(() => {
-        new PlainAverageStorage[BaseElement](ElementMeasures.bagOfWordElementDistance)
-      })
-    })
+    /**
+      * Tag sequence, return possible combinations with weight
+      * < List[(List[Node], Double)] >
+      */
+    val res = sknn.tag(target, 1)(filterNodes)
 
-    println(s"trainingSet.size: ${trainingSet.size}")
-
-    trainingSet.foreach(seq => model.processSequenceImpl(seq)(onto => List((onto.label, onto))))
-
-    val sknn = new SkNN[BaseElement, SkNNNode[BaseElement]](model)
-
-
-    val res = sknn.tag(target, 1)((elem, node) => {
-      elem match {
-        case contextElement: ContextElement => contextElement.mainElement match {
-          case bow: BagOfWordElement => bow.label == node.label
-          case _ => true
-        }
-        case _ => true
-      }
-    })
 
     val recoveredResult1 = RecoverConcept.recover(target, model.initNode, res.head._1)
     println(s"Weight: ${res.head._2}")
-    objs.zip(recoveredResult1).foreach({ case (obj, node) => println(s"${obj.tokens.mkString(" ")} => ${node.label}") })
+    objects.zip(recoveredResult1).foreach({ case (obj, node) => println(s"${obj.tokens.mkString(" ")} => ${node.label}") })
 
-    /*
-    val recoveredResult2 = RecoverConcept.recover(target, model.initNode, res(1)._1)
-    println(s"Weight: ${res(1)._2}")
-    objs.zip(recoveredResult2).foreach({ case (obj, node) => println(s"${obj.tokens.mkString(" ")} => ${node.label}")})
-    */
   }
 
 }

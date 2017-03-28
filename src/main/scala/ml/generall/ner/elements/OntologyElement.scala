@@ -1,7 +1,8 @@
 package ml.generall.ner.elements
 
-import ml.generall.ontology.base.GraphClient
+import ml.generall.ontology.base.{GraphClient, InMemoryGraphClient}
 import ml.generall.ontology.structure.{Concept, TraversalFactory}
+import ml.generall.resolver.tools.Tools
 
 import scala.collection.mutable
 
@@ -13,11 +14,11 @@ class OntologyElement(conceptUrl: String, _label: String = null, conceptWeight: 
   val weight: Double = conceptWeight
 
   override var label: String = if (_label == null) conceptUrl else _label
+
   var concept: Concept = OntologyElement.constructConcept(new Concept(conceptUrl))
 
-  def features(_threshold: Double): Map[String, Double] = {
-    concept.ontology.getTop(_threshold).map(x => (x.category, x.weight * conceptWeight)).toMap
-  }
+  def features(_threshold: Double): Map[String, Double] = concept.ontology.getTop(_threshold).map(x => (x.category, x.weight * conceptWeight)).toMap
+
 
   val sortedFeatureMap: Map[String, Double] = features(OntologyElement.threshold)
 
@@ -30,9 +31,9 @@ class OntologyElement(conceptUrl: String, _label: String = null, conceptWeight: 
 }
 
 object OntologyElement {
-  val factory = new TraversalFactory(GraphClient)
+  val factory = new TraversalFactory(InMemoryGraphClient)
 
-  val threshold = 0.2 // TODO: hyper parameter
+  val threshold = 0.5 // TODO: hyper parameter
 
   def constructConcept(concept: Concept, _threshold: Double = threshold): Concept = {
     val traversal = factory.constructConcept(concept.categories, _threshold)

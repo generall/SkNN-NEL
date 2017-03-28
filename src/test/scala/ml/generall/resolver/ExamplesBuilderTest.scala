@@ -1,9 +1,8 @@
 package ml.generall.resolver
 
-import ml.generall.common.Tools
 import ml.generall.elastic.Chunk
-import ml.generall.resolver.dto.{ConceptVariant, ConceptsAnnotation, EnrichedSentence, MentionSearchResult}
-import ml.generall.resolver.tools.SaveTools
+import ml.generall.resolver.dto.{ConceptVariant, ConceptsAnnotation}
+import ml.generall.resolver.tools.{SaveTools, Tools}
 import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 /**
@@ -35,40 +34,24 @@ class ExamplesBuilderTest extends FunSuite with BeforeAndAfterEach {
 
     val conceptVariant = List(ConceptVariant(
       concept = "url:science",
-      count = 1,
-      avgScore = 1.0,
       avgNorm = 1.0,
-      avgSoftMax = 1.0,
-      maxScore = 1.0,
-      minScore = 1.0
+      avgSoftMax = 1.0
     ))
 
     val conceptVariant1 = List(ConceptVariant(
       concept = "url:Edward_Smith",
-      count = 1,
-      avgScore = 1.0,
       avgNorm = 1.0,
-      avgSoftMax = 1.0,
-      maxScore = 1.0,
-      minScore = 1.0
+      avgSoftMax = 1.0
     ))
 
     val conceptVariant2 = List(ConceptVariant(
       concept = "url:RMS_Titanic",
-      count = 1,
-      avgScore = 1.0,
       avgNorm = 1.0,
-      avgSoftMax = 1.0,
-      maxScore = 1.0,
-      minScore = 1.0
+      avgSoftMax = 1.0
     ), ConceptVariant(
       concept = "url:Titanic_(film)",
-      count = 1,
-      avgScore = 1.0,
       avgNorm = 1.0,
-      avgSoftMax = 1.0,
-      maxScore = 1.0,
-      minScore = 1.0
+      avgSoftMax = 1.0
     ))
 
 
@@ -90,12 +73,8 @@ class ExamplesBuilderTest extends FunSuite with BeforeAndAfterEach {
 
     val conceptVariant = List(ConceptVariant(
       concept = "url:science",
-      count = 1,
-      avgScore = 1.0,
       avgNorm = 1.0,
-      avgSoftMax = 1.0,
-      maxScore = 1.0,
-      minScore = 1.0
+      avgSoftMax = 1.0
     ))
     builder.buildFromMention(firstChunk, middleChunk, lastChunk, conceptVariant).foreach(_.print())
   }
@@ -108,7 +87,7 @@ class ExamplesBuilderTest extends FunSuite with BeforeAndAfterEach {
 
 
   test("testCreateMockups") {
-    val analyzer = new SentenceAnalizer
+    val exampleBuilder = new ExamplesBuilder
 
     val urls = List(
       "http://en.wikipedia.org/wiki/Titanic_(1997_film)",
@@ -121,9 +100,9 @@ class ExamplesBuilderTest extends FunSuite with BeforeAndAfterEach {
     )
 
 
-    val trains: BuilderMockup.HrefStore = Tools.time {
+    val trains: BuilderMockup.HrefStore = Tools.time{
       urls.par.map(href =>
-        href -> analyzer.exampleBuilder.builder.searchMentionsByHref(href).toList
+        href -> exampleBuilder.builder.searchMentionsByHref(href).toList
       ).toList
     }
 
@@ -135,7 +114,7 @@ class ExamplesBuilderTest extends FunSuite with BeforeAndAfterEach {
 
     val mentionsTrain: BuilderMockup.MentionStore = Tools.time {
       mentions.par.map(m =>
-        m -> analyzer.exampleBuilder.builder.searchMention(m)
+        m -> exampleBuilder.builder.searchMention(m)
       ).toList
     }
 
@@ -160,7 +139,5 @@ class ExamplesBuilderTest extends FunSuite with BeforeAndAfterEach {
     titanicSentences.foreach(x => println(x.sent))
     println("-----------")
     icebergSentences.foreach(x => println(x.sent))
-    
   }
-
 }

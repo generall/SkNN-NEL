@@ -37,13 +37,14 @@ trait BuilderInterface {
   * Created by generall on 27.08.16.
   */
 
-object Builder extends BuilderInterface{
+object Builder extends BuilderInterface {
 
 
   /**
     * Search for possible concepts of mention
-    * @param mention mention text
-    * @param leftContext left context
+    *
+    * @param mention      mention text
+    * @param leftContext  left context
     * @param rightContext right context
     * @return concept variants
     */
@@ -84,8 +85,9 @@ object Builder extends BuilderInterface{
 
   /**
     * Search for sentences with target concept
-    * @param href target concept as wikipedia link
-    * @param leftContext left context
+    *
+    * @param href         target concept as wikipedia link
+    * @param leftContext  left context
     * @param rightContext right context
     * @return Sentence with all mentions
     */
@@ -98,7 +100,6 @@ object Builder extends BuilderInterface{
         val mentions = hitMap("mentions")
           .asInstanceOf[util.List[util.Map[String, AnyRef]]]
           .map(x => x("id").asInstanceOf[Int] -> mapToMention(x)).toMap
-
 
 
         val chunks = hitMap.getOrElse("parse_result", new util.ArrayList)
@@ -185,6 +186,7 @@ object Builder extends BuilderInterface{
 
   /**
     * Predicate for skipping rare concepts
+    *
     * @param x concept variant
     * @return
     */
@@ -249,7 +251,7 @@ class ExamplesBuilder {
         tokens = chunk.tokens.map(x => (x.lemma, 1.0)),
         state = state,
         concepts = allConcepts,
-        resolver = if(wikilinksMention.isDefined) ConceptVariant.WIKILINKS_RESOLVER else ConceptVariant.ELASTIC_RESOLVER
+        resolver = if (wikilinksMention.isDefined) ConceptVariant.WIKILINKS_RESOLVER else ConceptVariant.ELASTIC_RESOLVER
       )
     })
   }
@@ -261,11 +263,11 @@ class ExamplesBuilder {
     * @return
     */
   def makeTrain(groups: Iterable[(String /* state */ , List[ChunkRecord])]): List[TrainObject] = {
+    val pattern = "^(NP.*)".r
     groups.map(group => {
       val (state, tokens) = group
-      val pattern = "^(NP.*)".r
       state match {
-        case pattern(_) => {
+        case pattern(_) =>
           val text = tokens.map(_.word).mkString(" ")
           val weights = tokens.map(builder.weightFu)
           val variants = if (builder.mentionFilter.filter(tokens, weights))
@@ -275,7 +277,6 @@ class ExamplesBuilder {
             Nil
           }
           TrainObject(tokens.zip(weights).map(x => (x._1.lemma, x._2)), state, variants)
-        }
         case _ =>
           val weights = tokens.map(builder.weightFu)
           TrainObject(tokens.zip(weights).map(x => (x._1.lemma, x._2)), state, Nil)
@@ -285,6 +286,7 @@ class ExamplesBuilder {
 
   /**
     * Funtion for selection state of TrainObject by it's context
+    *
     * @param concepts
     * @return
     */
@@ -329,6 +331,7 @@ class ExamplesBuilder {
 
   /**
     * Build train objects from sentence with annotations
+    *
     * @param sentence
     * @param annotations of sentence. Must not overlap!
     * @return
@@ -354,9 +357,8 @@ class ExamplesBuilder {
     val text = firstChunkText ++ " " ++ middleChunkText ++ " " ++ lastChunkText
 
     val sentenceRange = splitter.getSentence(text, (startMentionPos, endMentionPos)) match {
-      case None => {
+      case None =>
         throw UnparsableException(text, startMentionPos, endMentionPos)
-      }
       case x => x.get
     }
     val sentence = text.substring(sentenceRange._1, sentenceRange._2)
