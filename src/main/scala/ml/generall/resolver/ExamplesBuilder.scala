@@ -53,7 +53,7 @@ object Builder extends BuilderInterface {
 
       override def read(hit: Hit): Either[Throwable, EnrichedMention] = {
         val mentions = hit.sourceAsMap("mentions").asInstanceOf[util.List[util.Map[String, AnyRef]]]
-        val origMention = mentions.find(mention => mention("resolver").asInstanceOf[String] == ConceptVariant.WIKILINKS_RESOLVER)
+        val origMention = mentions.find(mention => mention("resolver").asInstanceOf[String] == ConceptVariantConstants.WIKILINKS_RESOLVER)
         origMention match {
           case Some(x: util.Map[String, AnyRef]) => {
             Right(mapToMention(x))
@@ -72,7 +72,7 @@ object Builder extends BuilderInterface {
               matchQuery("mentions.context.left", leftContext),
               matchQuery("mentions.context.right", rightContext)
             ).must(
-              matchQuery("mentions.resolver", ConceptVariant.WIKILINKS_RESOLVER)
+              matchQuery("mentions.resolver", ConceptVariantConstants.WIKILINKS_RESOLVER)
             )
           } scoreMode "Max"
         } limit 100
@@ -135,7 +135,7 @@ object Builder extends BuilderInterface {
               matchQuery("mentions.context.right", rightContext)
             ).must(
               matchQuery("mentions.concepts.link", href),
-              matchQuery("mentions.resolver", ConceptVariant.WIKILINKS_RESOLVER)
+              matchQuery("mentions.resolver", ConceptVariantConstants.WIKILINKS_RESOLVER)
             )
           } scoreMode "Max"
         } limit 100 // TODO: Hyperparameter
@@ -236,13 +236,13 @@ class ExamplesBuilder {
   def enrichedSentenceToTrain(sentence: EnrichedSentence): List[TrainObject] = {
     sentence.chunks.map(chunk => {
       var allConcepts = chunk.getAllMentions
-        .filter(_.resolver != ConceptVariant.WIKILINKS_RESOLVER)
+        .filter(_.resolver != ConceptVariantConstants.WIKILINKS_RESOLVER)
         .flatMap(_.concepts)
-      val wikilinksMention = chunk.getAllMentions.find(x => x.resolver == ConceptVariant.WIKILINKS_RESOLVER)
+      val wikilinksMention = chunk.getAllMentions.find(x => x.resolver == ConceptVariantConstants.WIKILINKS_RESOLVER)
       val state = (wikilinksMention match {
         case None => selectState(allConcepts) // If no wikilink mention in chunk
         case Some(x) =>
-          val conceptVar = x.concepts.headOption.map(_.copy(resolver = ConceptVariant.WIKILINKS_RESOLVER))
+          val conceptVar = x.concepts.headOption.map(_.copy(resolver = ConceptVariantConstants.WIKILINKS_RESOLVER))
           allConcepts = conceptVar.toList ++ allConcepts
           conceptVar.map(_.concept) // set wikilink concept as state
       }).getOrElse(chunk.tokens.head.parseTag)
@@ -251,7 +251,7 @@ class ExamplesBuilder {
         tokens = chunk.tokens.map(x => (x.lemma, 1.0)),
         state = state,
         concepts = allConcepts,
-        resolver = if (wikilinksMention.isDefined) ConceptVariant.WIKILINKS_RESOLVER else ConceptVariant.ELASTIC_RESOLVER
+        resolver = if (wikilinksMention.isDefined) ConceptVariantConstants.WIKILINKS_RESOLVER else ConceptVariantConstants.ELASTIC_RESOLVER
       )
     })
   }
