@@ -1,6 +1,5 @@
 package ml.generall.resolver
 
-import ml.generall.resolver.Builder
 import ml.generall.resolver.dto.{EnrichedSentence, MentionSearchResult}
 import ml.generall.resolver.tools.SaveTools
 

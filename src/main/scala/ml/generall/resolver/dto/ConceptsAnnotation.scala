@@ -6,5 +6,10 @@ package ml.generall.resolver.dto
 case class ConceptsAnnotation(
                                fromPos: Int,
                                toPos: Int,
-                               concepts: List[ConceptVariant]
+                               concepts: List[ConceptDescription]
                              ) {}
+
+case class ConceptDescription(
+                               concept: String,
+                               params: Map[String, Double]
+                             )

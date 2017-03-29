@@ -7,6 +7,7 @@ import spray.http._
 import spray.json._
 import spray.httpx.SprayJsonSupport._
 import MediaTypes._
+import ml.generall.resolver.dto.{ConceptDescription, ConceptsAnnotation}
 
 
 // we don't implement our route structure directly in the service actor because
@@ -23,42 +24,43 @@ class MyServiceActor extends Actor with MyService {
   def receive = runRoute(myRoute)
 }
 
-case class TestStruct(n: Int, s: List[String]){}
-object TestStructProtocol extends DefaultJsonProtocol {
-  implicit val data = jsonFormat2(TestStruct)
+case class Sentence(s: String)
+
+case class Result(annotations: List[ConceptsAnnotation])
+
+object SentenceProtocol extends DefaultJsonProtocol {
+  implicit val data = jsonFormat1(Sentence)
 }
 
-case class EntityParams(
-                         avgWeight: Double,
-                         maxWeight: Double,
-                         wordCount: Int,
-                         vote: String
-                       ){}
-
-object Storage{
-  var list: List[EntityParams] = Nil
+object NERProtocol extends DefaultJsonProtocol {
+  implicit val description = jsonFormat2(ConceptDescription)
+  implicit val annotation = jsonFormat3(ConceptsAnnotation)
+  implicit val result = jsonFormat1(Result)
 }
+
 
 // this trait defines our service behavior independently from the service actor
 trait MyService extends HttpService {
 
-  import TestStructProtocol._
+  import SentenceProtocol._
+  import NERProtocol._
 
   val myRoute: Route =
     path("1") {
       get {
-        complete(TestStruct(1, List("test")).toJson.prettyPrint)
+        complete(Sentence("test").toJson.prettyPrint)
       }
-    } ~ path("3") {
-      post{
-        entity(as[TestStruct]) {
+    } ~ path("analyze") {
+      post {
+        entity(as[Sentence]) {
           body => {
             println(body)
-            complete("ok")
+            val res = Result(annotations = Worker.analyse(body.s))
+            complete(res)
           }
         }
       }
-    }  ~ pathPrefix("public") {
-      getFromDirectory("public")
+    } ~ pathPrefix("public") {
+      getFromDirectory("./public")
     }
 }

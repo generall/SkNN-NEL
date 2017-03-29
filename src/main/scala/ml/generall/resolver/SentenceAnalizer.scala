@@ -3,7 +3,7 @@ package ml.generall.resolver
 import ml.generall.ner.elements.{ContextElement, _}
 import ml.generall.ner.{ElementMeasures, RecoverConcept}
 import ml.generall.nlp.ChunkRecord
-import ml.generall.resolver.dto.ConceptVariant
+import ml.generall.resolver.dto.{ConceptDescription, ConceptVariant, ConceptsAnnotation}
 import ml.generall.resolver.tools.Tools
 import ml.generall.sknn.SkNN
 import ml.generall.sknn.model.storage.PlainAverageStorage
@@ -190,12 +190,14 @@ class SentenceAnalizer {
     }
   } */
 
-  def analyse(sentence: String): Unit = {
+  def analyse(sentence: String): List[ConceptsAnnotation] = {
+
+    exampleBuilder.builder = BuilderMockup // TODO: remove this! For test only
 
     /**
       * Prepare target sentence
       */
-    val (objects, annotations) = prepareSentence(sentence)
+    val (objects: List[TrainObject], annotations) = prepareSentence(sentence)
 
     /**
       * Get context element description
@@ -235,10 +237,18 @@ class SentenceAnalizer {
     val res = sknn.tag(target, 1)(filterNodes)
 
     val relevantChunks: List[(Int, Int)] = selectedIds.map(id => annotations(id))
+    val relevantObjects = selectedIds.map(id => objects(id))
 
     val recoveredResult1 = RecoverConcept.recover(target, model.initNode, res.head._1)
-    println(s"Weight: ${res.head._2}")
-    relevantChunks.zip(recoveredResult1).foreach{ case ((from, to), node) => None }
+
+    relevantChunks.zip(recoveredResult1).map{ case ((from, to), node) => ConceptsAnnotation(
+      fromPos = from,
+      toPos = to,
+      concepts = List(ConceptDescription(
+        concept = node.label,
+        params = Map()
+      ))
+    ) }
 
   }
 
