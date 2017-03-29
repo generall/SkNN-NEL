@@ -8,8 +8,4 @@ import ml.generall.resolver.SentenceAnalizer
 object SentenceConverter {
   val analizer = new SentenceAnalizer
 
-  def convert(sentence: String): ParseResult = {
-    ParseResult(sentence, analizer.prepareSentence(sentence))
-  }
-
 }

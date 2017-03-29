@@ -2,6 +2,7 @@ package ml.generall.resolver
 
 import ml.generall.ner.elements.{ContextElement, _}
 import ml.generall.ner.{ElementMeasures, RecoverConcept}
+import ml.generall.nlp.ChunkRecord
 import ml.generall.resolver.dto.ConceptVariant
 import ml.generall.resolver.tools.Tools
 import ml.generall.sknn.SkNN
@@ -78,7 +79,7 @@ class SentenceAnalizer {
   val parser = LocalCoreNLP
   val exampleBuilder = new ExamplesBuilder
 
-  def prepareSentence(sentence: String): List[TrainObject] = {
+  def prepareSentence(sentence: String): (List[TrainObject], List[(Int, Int)]) = {
     val parseRes = Tools.time(parser.process(sentence), "parser")
 
     val groups = parseRes.zipWithIndex
@@ -87,7 +88,13 @@ class SentenceAnalizer {
       .sortBy(x => x._2.head._2)
       .map(pair => (s"${pair._1._1}" /* _${pair._1._2} */ , pair._2.map(_._1))) // creation of state
 
-    exampleBuilder.makeTrain(groups)
+    val annotations: List[(Int, Int)] = groups.map{ case (_, chunks) => {
+      val from = chunks.head.beginPos
+      val to = chunks.last.endPos
+      (from, to)
+    }}
+
+    (exampleBuilder.makeTrain(groups), annotations)
   }
 
 
@@ -96,7 +103,7 @@ class SentenceAnalizer {
     *
     * @return keep element?
     */
-  def filterSequencePredicate(el: ContextElement): Boolean = el.mainElement match {
+  def filterSequencePredicate(el: (ContextElement, Int)): Boolean = el._1.mainElement match {
     case x: MultiElement[_] => x.subElements.exists {
       case y: OntologyElement => y.nonEmpty
       case _ => false
@@ -104,9 +111,6 @@ class SentenceAnalizer {
     case y: OntologyElement => y.nonEmpty
     case _ => false
   }
-
-
-  def filterSequence(seq: List[ContextElement]): List[ContextElement] = seq.filter(filterSequencePredicate)
 
   /**
     * Prepare training set for disambiguation
@@ -116,10 +120,13 @@ class SentenceAnalizer {
     .flatMap(x => exampleBuilder.build(x._2, x._1, x._3))
     .filter(_.nonEmpty)
     .map(convertToContext)
+    .map(_.unzip._1)
     .toList
 
+  def filterSequence(seq: List[ContextElement]): List[(ContextElement, Int)] = seq.zipWithIndex.filter(filterSequencePredicate)
 
-  def convertToContext(objects: List[TrainObject]): List[ContextElement] = filterSequence(
+
+  def convertToContext(objects: List[TrainObject]): List[(ContextElement, Int)] = filterSequence(
     ContextElementConverter.convert(objects.map(SentenceAnalizer.toBagOfWordsElement), contextSize))
 
 
@@ -188,12 +195,12 @@ class SentenceAnalizer {
     /**
       * Prepare target sentence
       */
-    val objects = prepareSentence(sentence)
+    val (objects, annotations) = prepareSentence(sentence)
 
     /**
       * Get context element description
       */
-    val target: List[ContextElement] = convertToContext(objects)
+    val (target: List[ContextElement], selectedIds: List[Int]) = convertToContext(objects).unzip
 
     /**
       * All concepts with disambiguation
@@ -227,10 +234,11 @@ class SentenceAnalizer {
       */
     val res = sknn.tag(target, 1)(filterNodes)
 
+    val relevantChunks: List[(Int, Int)] = selectedIds.map(id => annotations(id))
 
     val recoveredResult1 = RecoverConcept.recover(target, model.initNode, res.head._1)
     println(s"Weight: ${res.head._2}")
-    objects.zip(recoveredResult1).foreach({ case (obj, node) => println(s"${obj.tokens.mkString(" ")} => ${node.label}") })
+    relevantChunks.zip(recoveredResult1).foreach{ case ((from, to), node) => None }
 
   }
 

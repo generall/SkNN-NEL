@@ -8,6 +8,7 @@ import ml.generall.sknn.model.storage.PlainAverageStorage
 import ml.generall.sknn.model.{Model, SkNNNode, SkNNNodeImpl}
 import ml.generall.sknn.model.storage.elements.BaseElement
 import ml.generall.elastic.Chunk
+import ml.generall.nlp.ChunkRecord
 import ml.generall.ontology.structure.Concept
 import ml.generall.resolver.dto.ConceptVariant
 import ml.generall.resolver.tools.Tools
@@ -102,7 +103,7 @@ class SentenceAnalizerTest extends FunSuite {
 
     val trains = analyzer.prepareSentence(str)
 
-    trains.foreach(_.print())
+    trains._1.foreach(_.print())
   }
 
   test("testProfilegetTrainingSet") {
@@ -148,12 +149,13 @@ class SentenceAnalizerTest extends FunSuite {
     /**
       * Prepare target sentence
       */
-    val objects = Tools.time(analyzer.prepareSentence(sentence), "prepareSentence")
+    val (objects, annotations) = Tools.time(analyzer.prepareSentence(sentence), "prepareSentence")
 
     /**
       * Get context element description
       */
-    val target: List[ContextElement] = Tools.time(analyzer.convertToContext(objects), "convertToContext")
+    val (target: List[ContextElement], selectedIds: List[Int]) = Tools.time(analyzer.convertToContext(objects), "convertToContext").unzip
+
 
     /**
       * All concepts with disambiguation
@@ -204,10 +206,11 @@ class SentenceAnalizerTest extends FunSuite {
 
     res.head._1.foreach(node => println(node.label))
 
+    val relevantChunks: List[(Int, Int)] = selectedIds.map(id => annotations(id))
 
     val recoveredResult1 = RecoverConcept.recover(target, model.initNode, res.head._1)
     println(s"Weight: ${res.head._2}")
-    objects.zip(recoveredResult1).foreach({ case (obj, node) => println(s"${obj.tokens.mkString(" ")} => ${node.label}") })
+    relevantChunks.zip(recoveredResult1).foreach({ case ((from, to), node) => println(s"${sentence.substring(from, to)} => ${node.label}") })
 
   }
 

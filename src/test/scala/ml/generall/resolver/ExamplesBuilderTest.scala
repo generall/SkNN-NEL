@@ -25,60 +25,6 @@ class ExamplesBuilderTest extends FunSuite with BeforeAndAfterEach {
     })
   }
 
-
-  test("testBuildWithAnnotations") {
-
-    val sent = "I am good at science and math."
-
-    val sent2 = "Edward Smith is a captain of Titanic"
-
-    val conceptVariant = List(ConceptVariant(
-      concept = "url:science",
-      avgNorm = 1.0,
-      avgSoftMax = 1.0
-    ))
-
-    val conceptVariant1 = List(ConceptVariant(
-      concept = "url:Edward_Smith",
-      avgNorm = 1.0,
-      avgSoftMax = 1.0
-    ))
-
-    val conceptVariant2 = List(ConceptVariant(
-      concept = "url:RMS_Titanic",
-      avgNorm = 1.0,
-      avgSoftMax = 1.0
-    ), ConceptVariant(
-      concept = "url:Titanic_(film)",
-      avgNorm = 1.0,
-      avgSoftMax = 1.0
-    ))
-
-
-    val annotations = List(ConceptsAnnotation(13, 20, conceptVariant))
-
-    val annotations1 = List(ConceptsAnnotation(0, 12, conceptVariant1), ConceptsAnnotation(29, 36, conceptVariant2))
-
-    builder.buildFromAnnotations(sent, annotations).foreach(_.print())
-
-    builder.buildFromAnnotations(sent2, annotations1).foreach(_.print())
-
-  }
-
-
-  test("testBuildFromMention") {
-    val firstChunk = Chunk("I am good at")
-    val middleChunk = Chunk("science", "url:Science")
-    val lastChunk = Chunk("and math")
-
-    val conceptVariant = List(ConceptVariant(
-      concept = "url:science",
-      avgNorm = 1.0,
-      avgSoftMax = 1.0
-    ))
-    builder.buildFromMention(firstChunk, middleChunk, lastChunk, conceptVariant).foreach(_.print())
-  }
-
   test("customExtendMentionSearch") {
     val mentionResult = Builder.searchMention("batman")
     mentionResult.stats.foreach(println)

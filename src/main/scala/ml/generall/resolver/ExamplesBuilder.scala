@@ -53,7 +53,7 @@ object Builder extends BuilderInterface {
 
       override def read(hit: Hit): Either[Throwable, EnrichedMention] = {
         val mentions = hit.sourceAsMap("mentions").asInstanceOf[util.List[util.Map[String, AnyRef]]]
-        val origMention = mentions.find(mention => mention("resolver").asInstanceOf[String] == ConceptVariantConstants.WIKILINKS_RESOLVER)
+        val origMention = mentions.find(mention => mention("resolver").asInstanceOf[String] == ConceptVariant.WIKILINKS_RESOLVER)
         origMention match {
           case Some(x: util.Map[String, AnyRef]) => {
             Right(mapToMention(x))
@@ -72,7 +72,7 @@ object Builder extends BuilderInterface {
               matchQuery("mentions.context.left", leftContext),
               matchQuery("mentions.context.right", rightContext)
             ).must(
-              matchQuery("mentions.resolver", ConceptVariantConstants.WIKILINKS_RESOLVER)
+              matchQuery("mentions.resolver", ConceptVariant.WIKILINKS_RESOLVER)
             )
           } scoreMode "Max"
         } limit 100
@@ -135,7 +135,7 @@ object Builder extends BuilderInterface {
               matchQuery("mentions.context.right", rightContext)
             ).must(
               matchQuery("mentions.concepts.link", href),
-              matchQuery("mentions.resolver", ConceptVariantConstants.WIKILINKS_RESOLVER)
+              matchQuery("mentions.resolver", ConceptVariant.WIKILINKS_RESOLVER)
             )
           } scoreMode "Max"
         } limit 100 // TODO: Hyperparameter
@@ -236,13 +236,13 @@ class ExamplesBuilder {
   def enrichedSentenceToTrain(sentence: EnrichedSentence): List[TrainObject] = {
     sentence.chunks.map(chunk => {
       var allConcepts = chunk.getAllMentions
-        .filter(_.resolver != ConceptVariantConstants.WIKILINKS_RESOLVER)
+        .filter(_.resolver != ConceptVariant.WIKILINKS_RESOLVER)
         .flatMap(_.concepts)
-      val wikilinksMention = chunk.getAllMentions.find(x => x.resolver == ConceptVariantConstants.WIKILINKS_RESOLVER)
+      val wikilinksMention = chunk.getAllMentions.find(x => x.resolver == ConceptVariant.WIKILINKS_RESOLVER)
       val state = (wikilinksMention match {
         case None => selectState(allConcepts) // If no wikilink mention in chunk
         case Some(x) =>
-          val conceptVar = x.concepts.headOption.map(_.copy(resolver = ConceptVariantConstants.WIKILINKS_RESOLVER))
+          val conceptVar = x.concepts.headOption.map(_.copy(resolver = ConceptVariant.WIKILINKS_RESOLVER))
           allConcepts = conceptVar.toList ++ allConcepts
           conceptVar.map(_.concept) // set wikilink concept as state
       }).getOrElse(chunk.tokens.head.parseTag)
@@ -251,7 +251,7 @@ class ExamplesBuilder {
         tokens = chunk.tokens.map(x => (x.lemma, 1.0)),
         state = state,
         concepts = allConcepts,
-        resolver = if (wikilinksMention.isDefined) ConceptVariantConstants.WIKILINKS_RESOLVER else ConceptVariantConstants.ELASTIC_RESOLVER
+        resolver = if (wikilinksMention.isDefined) ConceptVariant.WIKILINKS_RESOLVER else ConceptVariant.ELASTIC_RESOLVER
       )
     })
   }
@@ -293,77 +293,6 @@ class ExamplesBuilder {
   def selectState(concepts: List[ConceptVariant]): Option[String] = concepts match {
     case Nil => None
     case _ => Some(concepts.maxBy(_.count).concept)
-  }
-
-  @Deprecated
-  def convertWithoutAnnotations(records: List[ChunkRecord], listBuffer: ListBuffer[TrainObject]) = {
-    val groups = records.groupBy(record => (record.parseTag, 0 /* record.ner*/ , record.groupId))
-    groups.toSeq.sortBy(x => x._1._3).foreach(group => {
-      val ((parserTag, ner, _), groupRecords) = group
-      /**
-        * #StateDefinition
-        */
-      val trainObject = Builder.makeTrainFromRecords(groupRecords, s"${parserTag}" /* _$ner */ , Nil)
-      listBuffer.append(trainObject)
-    })
-  }
-
-  @Deprecated
-  def convertRecords(records: List[ChunkRecord], annotations: List[ConceptsAnnotation], listBuffer: ListBuffer[TrainObject]): Unit = {
-    annotations match {
-      case head :: tail => {
-        val (beforeAnnotation, withAnnotation) = records.span(record => record.endPos < head.fromPos)
-        convertWithoutAnnotations(beforeAnnotation, listBuffer)
-        val (annotated, afterAnnotation) = withAnnotation.span(record => record.beginPos < head.toPos)
-
-        /**
-          * Creating of state label here #StateDefinition
-          */
-        val trainObject = Builder.makeTrainFromRecords(annotated, s"${annotated.head.parseTag}" /* _${annotated.head.ner}" */ , head.concepts)
-        listBuffer.append(trainObject)
-        convertRecords(afterAnnotation, tail, listBuffer)
-      }
-      case Nil => {
-        convertWithoutAnnotations(records, listBuffer)
-      }
-    }
-  }
-
-  /**
-    * Build train objects from sentence with annotations
-    *
-    * @param sentence
-    * @param annotations of sentence. Must not overlap!
-    * @return
-    */
-  @Deprecated
-  def buildFromAnnotations(sentence: String, annotations: List[ConceptsAnnotation]): List[TrainObject] = {
-    val buf = new ListBuffer[TrainObject]
-    val records = parser.process(sentence)
-    convertRecords(records, annotations, buf)
-    buf.toList
-  }
-
-  @Deprecated
-  def buildFromMention(firstChunk: Chunk, middleChunk: Chunk, lastChunk: Chunk, concepts: List[ConceptVariant]): List[TrainObject] = {
-
-    val firstChunkText = firstChunk.text.replaceAll("\\P{InBasic_Latin}", "")
-    val middleChunkText = middleChunk.text.replaceAll("\\P{InBasic_Latin}", "")
-    val lastChunkText = lastChunk.text.replaceAll("\\P{InBasic_Latin}", "")
-
-    val startMentionPos = firstChunkText.length + 1
-    val endMentionPos = middleChunkText.length + startMentionPos + 1
-
-    val text = firstChunkText ++ " " ++ middleChunkText ++ " " ++ lastChunkText
-
-    val sentenceRange = splitter.getSentence(text, (startMentionPos, endMentionPos)) match {
-      case None =>
-        throw UnparsableException(text, startMentionPos, endMentionPos)
-      case x => x.get
-    }
-    val sentence = text.substring(sentenceRange._1, sentenceRange._2)
-    val annotations = List(ConceptsAnnotation(startMentionPos - sentenceRange._1, endMentionPos - sentenceRange._1, concepts))
-    buildFromAnnotations(sentence, annotations)
   }
 
 }

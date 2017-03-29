@@ -21,10 +21,10 @@ case class ConceptVariant(
     * Returns variant weight.
     * @return weight. Max = 1.0 (for Wikilinks)
     */
-  def getWeight: Double = if (resolver == ConceptVariantConstants.WIKILINKS_RESOLVER) 1.0 else ProbTools.logistic( avgScore * count, 20.0) // TODO: Hyperparam
+  def getWeight: Double = if (resolver == ConceptVariant.WIKILINKS_RESOLVER) 1.0 else ProbTools.logistic( avgScore * count, 20.0) // TODO: Hyperparam
 }
 
-object ConceptVariantConstants {
+object ConceptVariant {
   val WIKILINKS_RESOLVER = "wikilink"
   val ELASTIC_RESOLVER = "elastic"
 }
