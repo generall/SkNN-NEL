@@ -120,8 +120,8 @@ class SentenceAnalizer {
     .flatMap(x => exampleBuilder.build(x._2, x._1, x._3))
     .filter(_.nonEmpty)
     .map(convertToContext)
-    .map(_.unzip._1)
     .toList
+    .map(_.unzip._1)
 
   def filterSequence(seq: List[ContextElement]): List[(ContextElement, Int)] = seq.zipWithIndex.filter(filterSequencePredicate)
 

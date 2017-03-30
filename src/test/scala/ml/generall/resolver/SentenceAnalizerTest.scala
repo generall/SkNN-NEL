@@ -1,7 +1,7 @@
 package ml.generall.resolver
 
 import ml.generall.common.StupidAssert
-import ml.generall.ner.{ElementMeasures, RecoverConcept}
+import ml.generall.ner.{ElementMeasures, Measures, RecoverConcept}
 import ml.generall.ner.elements._
 import ml.generall.sknn.SkNN
 import ml.generall.sknn.model.storage.PlainAverageStorage
@@ -184,11 +184,20 @@ class SentenceAnalizerTest extends FunSuite {
       */
     val (sknn, model) = Tools.time(analyzer.learnModel(trainingSet), "learnModel")
 
+    Measures.count = 0
+    ElementMeasures.count = 0
+
+
     /**
       * Tag sequence, return possible combinations with weight
       * < List[(List[Node], Double)] >
       */
     val res = Tools.time(sknn.tag(target, 1)(analyzer.filterNodes), "tag")
+
+    println("Dist calls: " + Measures.count)
+    println("Dist foo calls: " + ElementMeasures.count)
+    println("Model nodes: " + model.nodes.size)
+    println("Model elements: " + model.nodes.foldLeft(0)( (acc, node) => acc + node._2.asInstanceOf[SkNNNodeImpl[_,_]].storages.size))
 
     def printStates(l: List[BaseElement]) = {
       println("-----")
@@ -196,11 +205,6 @@ class SentenceAnalizerTest extends FunSuite {
     }
 
     printStates(trainingSet(0))
-    printStates(trainingSet(1))
-    printStates(trainingSet(2))
-    printStates(trainingSet(100))
-    printStates(trainingSet(101))
-    printStates(trainingSet(102))
 
     println(" ---------- ")
 
@@ -211,6 +215,27 @@ class SentenceAnalizerTest extends FunSuite {
     val recoveredResult1 = RecoverConcept.recover(target, model.initNode, res.head._1)
     println(s"Weight: ${res.head._2}")
     relevantChunks.zip(recoveredResult1).foreach({ case ((from, to), node) => println(s"${sentence.substring(from, to)} => ${node.label}") })
+
+    /*
+      Elapsed time: 1548ms parser
+      Elapsed time: 4650ms prepareSentence
+      Elapsed time: 10500ms InMemoryGraph initialization
+      Elapsed time: 10728ms convertToContext
+      Elapsed time: 6ms getConceptsToLearn
+      Elapsed time: ( 2800 | 4000 ) ms getTrainingSet
+      Elapsed time: 62ms getAllWeightedCategories
+      Elapsed time: 3425ms updateStates
+      Elapsed time: 77ms learnModel
+      Elapsed time: 3023ms tag
+
+      par -> 4900
+      foo -> 2300
+      stream -> 5200
+      stream par -> inf ?!
+
+      full foo -> 4900
+      full foo par -> 4500
+     */
 
   }
 

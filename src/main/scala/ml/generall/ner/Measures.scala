@@ -12,6 +12,8 @@ import scalaz.outlaws.std.double._
   */
 object Measures {
 
+  var count = 0
+
   def weightedIntersection(x: Map[String, Double], y: Map[String, Double]): Double = {
     val intersection = x.keySet.intersect(y.keySet)
     intersection.foldLeft(0.0)((sum, key) => sum + Math.min(x(key), y(key)))
@@ -33,6 +35,7 @@ object Measures {
   def nonLinearTransform2(y: Double): Double = Math.pow(y, 2) // TODO: hyper parameter
 
   def nonLinearWeightedJaccardDisatnce(x: Map[String, Double], y: Map[String, Double]): Double = {
+    count += 1
     nonLinearTransform2(weightedJaccardDisatnce(x, y))
   }
 
@@ -40,6 +43,11 @@ object Measures {
 
 
 object ElementMeasures {
+
+  var count = 0
+
+  type WMap = Map[String, Double]
+
   def weightedJaccardDisatnce(x: WeightedSetElement, y: WeightedSetElement): Double = {
     val res = Measures.weightedJaccardDisatnce(x.features, y.features)
     Measures.nonLinearTransform1(res)
@@ -59,7 +67,6 @@ object ElementMeasures {
     }
   }
 
-
   def weightedDistance(x: BaseElement, y: BaseElement)(measureFunc: (WeightedSetElement, WeightedSetElement) => Double): Double = {
     x match {
       case xContextElement: ContextElement => y match {
@@ -76,8 +83,8 @@ object ElementMeasures {
     }
   }
 
-  def bagOfWordsDistance( xMap: Map[String, Double], yMap: Map[String, Double], yList: List[BaseElement] )
-                         (measureFunc: (Map[String, Double], Map[String, Double]) => Double ): Double = {
+  def bagOfWordsDistance( xMap: WMap, yMap: WMap, yList: List[BaseElement] )
+                         (measureFunc: (WMap, WMap) => Double ): Double = {
     yList match {
       case Nil => measureFunc(xMap, yMap)
       case head :: tail => {
@@ -91,8 +98,8 @@ object ElementMeasures {
     }
   }
 
-  def bagOfWordsDistance(xMap: Map[String, Double], context: List[BaseElement], y: BaseElement)
-                        (measureFunc: (Map[String, Double], Map[String, Double]) => Double ): Double = {
+  def bagOfWordsDistance(xMap: WMap, context: List[BaseElement], y: BaseElement)
+                        (measureFunc: (WMap, WMap) => Double ): Double = {
     context match {
       case Nil => bagOfWordsDistance(xMap, Map[String, Double](), List(y))(measureFunc)
       case head :: tail => {
@@ -115,6 +122,7 @@ object ElementMeasures {
   }
 
   def bagOfWordElementDistance(x: BaseElement, y: BaseElement): Double = {
+    count += 1
     bagOfWordsDistance(Map[String, Double](), List(x), y)(Measures.nonLinearWeightedJaccardDisatnce)
   }
 
