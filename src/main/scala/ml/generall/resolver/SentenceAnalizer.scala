@@ -15,6 +15,21 @@ import scala.collection.mutable
 
 object SentenceAnalizer {
 
+  val elementCache: mutable.HashMap[String, OntologyElement] = new mutable.HashMap[String, OntologyElement]()
+
+  def clearCache = elementCache.clear
+
+  var hits = 0
+  var total = 0
+
+  def getOntologyElement(concept: String, weight: Double): OntologyElement = {
+    val dbpediaConcept = SentenceAnalizer.wikiToDbpedia(concept)
+    total += 1
+    if(elementCache.contains(dbpediaConcept)) {
+      hits += 1
+    }
+    elementCache.getOrElseUpdate(dbpediaConcept, new OntologyElement(dbpediaConcept, conceptWeight = weight))
+  }
 
   def getConceptsToLearn(objList: List[TrainObject], contextSize: Int): List[(String, String, String)] = {
 
@@ -41,28 +56,26 @@ object SentenceAnalizer {
     }).toMap, obj.state)
     obj.concepts match {
       case Nil => element
-      case List(concept) => {
+      case List(concept) =>
         val multi = new MultiElement[WeightedSetElement]
-        val onto = new OntologyElement(SentenceAnalizer.wikiToDbpedia(concept.concept), conceptWeight = concept.getWeight)
+        val onto = getOntologyElement(concept.concept, concept.getWeight)
         if (onto.features.nonEmpty)
           multi.addElement(onto)
         multi.addElement(element)
         multi.label = obj.state // multi.genLabel
         multi
-      }
-      case disambiguation: Iterable[ConceptVariant] => {
+      case disambiguation: Iterable[ConceptVariant] =>
         val multi = new MultiElement[WeightedSetElement]
 
         disambiguation
           .view
-          .map(x => new OntologyElement(SentenceAnalizer.wikiToDbpedia(x.concept), conceptWeight = x.getWeight))
+          .map(x => getOntologyElement(x.concept, x.getWeight))
           .filter(element => element.features.nonEmpty)
           .foreach(multi.addElement)
 
         multi.addElement(element)
         multi.label = obj.state
         multi
-      }
     }
   }
 
@@ -88,11 +101,12 @@ class SentenceAnalizer {
       .sortBy(x => x._2.head._2)
       .map(pair => (s"${pair._1._1}" /* _${pair._1._2} */ , pair._2.map(_._1))) // creation of state
 
-    val annotations: List[(Int, Int)] = groups.map{ case (_, chunks) => {
+    val annotations: List[(Int, Int)] = groups.map { case (_, chunks) => {
       val from = chunks.head.beginPos
       val to = chunks.last.endPos
       (from, to)
-    }}
+    }
+    }
 
     (exampleBuilder.makeTrain(groups), annotations)
   }
@@ -120,8 +134,8 @@ class SentenceAnalizer {
     .flatMap(x => exampleBuilder.build(x._2, x._1, x._3))
     .filter(_.nonEmpty)
     .map(convertToContext)
-    .toList
     .map(_.unzip._1)
+    .toList
 
   def filterSequence(seq: List[ContextElement]): List[(ContextElement, Int)] = seq.zipWithIndex.filter(filterSequencePredicate)
 
@@ -195,6 +209,11 @@ class SentenceAnalizer {
     exampleBuilder.builder = BuilderMockup // TODO: remove this! For test only
 
     /**
+      * Clear OntologyElement cache
+      */
+    SentenceAnalizer.clearCache
+
+    /**
       * Prepare target sentence
       */
     val (objects: List[TrainObject], annotations) = prepareSentence(sentence)
@@ -241,14 +260,15 @@ class SentenceAnalizer {
 
     val recoveredResult1 = RecoverConcept.recover(target, model.initNode, res.head._1)
 
-    relevantChunks.zip(recoveredResult1).map{ case ((from, to), node) => ConceptsAnnotation(
+    relevantChunks.zip(recoveredResult1).map { case ((from, to), node) => ConceptsAnnotation(
       fromPos = from,
       toPos = to,
       concepts = List(ConceptDescription(
         concept = node.label,
         params = Map()
       ))
-    ) }
+    )
+    }
 
   }
 

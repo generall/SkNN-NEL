@@ -42,6 +42,8 @@ object Measures {
 }
 
 
+// TODO: Make in simplier
+
 object ElementMeasures {
 
   var count = 0

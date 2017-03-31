@@ -199,6 +199,9 @@ class SentenceAnalizerTest extends FunSuite {
     println("Model nodes: " + model.nodes.size)
     println("Model elements: " + model.nodes.foldLeft(0)( (acc, node) => acc + node._2.asInstanceOf[SkNNNodeImpl[_,_]].storages.size))
 
+    println("OntologyElement count: " + SentenceAnalizer.total)
+    println("OntologyElement cache hits: " + SentenceAnalizer.hits)
+
     def printStates(l: List[BaseElement]) = {
       println("-----")
       l.foreach(x => println(x.label))
