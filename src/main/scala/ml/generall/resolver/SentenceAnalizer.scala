@@ -25,7 +25,7 @@ object SentenceAnalizer {
   def getOntologyElement(concept: String, weight: Double): OntologyElement = {
     val dbpediaConcept = SentenceAnalizer.wikiToDbpedia(concept)
     total += 1
-    if(elementCache.contains(dbpediaConcept)) {
+    if (elementCache.contains(dbpediaConcept)) {
       hits += 1
     }
     elementCache.getOrElseUpdate(dbpediaConcept, new OntologyElement(dbpediaConcept, conceptWeight = weight))
@@ -192,17 +192,17 @@ class SentenceAnalizer {
   /**
     * This function should filter acceptable nodes for vertex
     */
-  val filterNodes: (BaseElement, SkNNNode[BaseElement]) => Boolean = (_: BaseElement, node: SkNNNode[BaseElement]) => true
-
-  /* {
+  val filterNodes: (BaseElement, SkNNNode[BaseElement]) => Boolean = (elem: BaseElement, node: SkNNNode[BaseElement]) => {
     elem match {
       case contextElement: ContextElement => contextElement.mainElement match {
-        case bow: BagOfWordElement => bow.label == node.label
+        case x: MultiElement[_] => x.exists{
+          case y: WeightedSetElement => y.features.contains(node.label)
+        }
         case _ => true
       }
       case _ => true
     }
-  } */
+  }
 
   def analyse(sentence: String): List[ConceptsAnnotation] = {
 
