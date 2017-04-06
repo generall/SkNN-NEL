@@ -54,3 +54,5 @@ libraryDependencies += "com.fasterxml" % "aalto-xml" % "1.0.0"
 resolvers += "Scalaz Bintray Repo" at "http://dl.bintray.com/stew/snapshots"
 
 resolvers += Resolver.mavenLocal
+
+fork in run := true
