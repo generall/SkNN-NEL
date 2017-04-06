@@ -205,10 +205,8 @@ class SentenceAnalizer {
   }
 
   def analyse(sentence: String): List[ConceptsAnnotation] = {
-
-    println(ml.generall.ontology.base.Config.CONCEPT_MAPPING_BASE)
-
-    exampleBuilder.builder = BuilderMockup // TODO: remove this! For test only
+    
+    // exampleBuilder.builder = BuilderMockup // TODO: remove this! For test only
 
     /**
       * Clear OntologyElement cache
