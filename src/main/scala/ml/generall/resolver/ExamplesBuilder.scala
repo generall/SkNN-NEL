@@ -1,5 +1,7 @@
 package ml.generall.resolver
 
+
+import scala.concurrent.duration._
 import java.util
 
 import com.sksamuel.elastic4s.{Hit, HitReader}
@@ -76,7 +78,7 @@ object Builder extends BuilderInterface {
             )
           } scoreMode "Max"
         } limit 100
-      }.await
+      }.await(60.seconds)
     }).groupBy(_._1.concepts.head.concept)
       .map({ case (concept, pairs) => calcStat(concept, pairs.map(_._2)) })
 
@@ -139,7 +141,7 @@ object Builder extends BuilderInterface {
             )
           } scoreMode "Max"
         } limit 100 // TODO: Hyperparameter
-      }.await
+      }.await(60.seconds)
     }).map(_._1)
   }
 
