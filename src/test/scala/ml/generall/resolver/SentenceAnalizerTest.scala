@@ -10,6 +10,7 @@ import ml.generall.sknn.model.storage.elements.BaseElement
 import ml.generall.elastic.Chunk
 import ml.generall.nlp.ChunkRecord
 import ml.generall.ontology.structure.Concept
+import ml.generall.resolver.SentenceAnalizer.elementCache
 import ml.generall.resolver.dto.ConceptVariant
 import ml.generall.resolver.tools.Tools
 import org.scalatest.FunSuite
@@ -141,10 +142,10 @@ class SentenceAnalizerTest extends FunSuite {
 
     val analyzer = new SentenceAnalizer
 
-    analyzer.exampleBuilder.builder = BuilderMockup
+    //analyzer.exampleBuilder.builder = BuilderMockup
 
     val sentence = "Titanic hit iceberg"
-    //val sentence = "James Cameron made Titanic"
+    //val sentence = "Cameron made Titanic"
 
     /**
       * Prepare target sentence
@@ -260,6 +261,13 @@ class SentenceAnalizerTest extends FunSuite {
     val (sknn, model) = analyzer.learnModel(List(trainContext))
 
     assert(model.nodes.size > 2)
+  }
+
+  test("testGetConcept") {
+    val url = "http://dbpedia.org/resource/Fireman_(steam_engine)"
+    val el = SentenceAnalizer.elementCache.getOrElseUpdate(url, new OntologyElement(url, conceptWeight = 1.0))
+
+
   }
 
 }
