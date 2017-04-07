@@ -1,117 +1,43 @@
 $(function () {
 
+  $body = $("body");
+
+  $(document).on({
+    ajaxStart: function() { $body.addClass("loading");    },
+    ajaxStop: function() { $body.removeClass("loading"); }
+  });
 
   function request(addr, data, type, isJson) {
     return $.ajax({
       type: type,
       url: addr,
-      async: false,
+      crossDomain: true,
       data: isJson ? JSON.stringify(data) : data,
       contentType: (isJson ? "application/json;" : "plain/text;") + " charset=utf-8",
       dataType: "json"
     });
   }
 
-  function requestJson(addt, data){
-    return request(addt, data, "POST", true);
+  function requestJson(addr, data){
+    return request(addr, data, "POST", true);
   }
 
-  function dump(){
-    return request("/dump?file=dump.json", "", "GET", false);
+  function callNEL(sentence){
+    var addr = "http://localhost:4567/analyze";
+    var data = {
+        s: sentence
+    };
+    return requestJson(addr, data);
   }
 
-
-  function calcStats(chunk){
-    var res = {}
-    var weights = $.map(chunk.tokens, (x) => x[1])
-
-    res.maxWeight = Math.max(...weights);
-    res.avgWeight = weights.reduce(function(a, b) { return a + b; }) / chunk.tokens.length;
-    res.wordCount = chunk.tokens.length;
-  
-    return res;
-  }
-
-
-  function renderSentence(data){
-    var div = $(".main");
-    $.each(data, (key, value) => {
-      var chunk = $.map(value.tokens, token =>  token[0]).join(" ");
-      var span = $("<span>")
-                    .text(chunk)
-                    .addClass("pos-" + value.state)
-                    .addClass("chunk")
-                    .attr("idx", key);
-
-      div.append(span);
-      if(value.state === "NP"){
-
-        span.on('click', () => showConcepts(value));
-
-        var voteUp = $("<a href='#'>")
-                    .text("[+]")
-                    .attr("idx", key)
-                    .addClass("vote-up");
-        var voteDown = $("<a href='#'>")
-                        .text("[ - ]")
-                        .attr("idx", key)
-                        .addClass("vote-down");
-        
-        var voteData = calcStats(value);
-
-        voteUp.on('click', () => {
-          voteUp.hide();
-          voteDown.hide();
-          span.addClass("voted-up");
-          voteData.vote = "up";
-          sendDecision(voteData);
-        })
-        
-        voteDown.on('click', () => {
-          voteUp.hide();
-          voteDown.hide();
-          span.addClass("voted-down");
-          voteData.vote = "down";
-          sendDecision(voteData);
-        })
-
-        div.append(" ");
-        div.append(voteUp);
-        div.append(voteDown);
-      }
-      div.append(" ");
-    })
-    div.append("<hr>")
-  }
-
-  function showConcepts(data) {
-    console.log(calcStats(data));
-    $.each(data.concepts, (key, val) => console.log(val.concept));
+  function submitSentence(){
+    console.log("submitSentence")
+    var sentence = $("#sentence").val()
+    callNEL(sentence).then( console.log )
   }
 
 
-  function sendDecision(data) {
-    requestJson('/log', data)
-      .done(() => console.log("ok"))
-  }
-
-
-
-  var Reciever = {
-
-    request : request,
-
-    requestJson : requestJson,
-
-    render: renderSentence
-  }
-
-
-  var addSent = (sent) => request('/parse', sent, "POST", false).then(resp => renderSentence(resp.data));
-
-
-  addSent("The simplest thing to do in the absence of a framework that does all the cross-browser compatibility for you is to just put a call to your code at the end of the body.");
-
+  $("#submitButton").on("click", submitSentence)
 
   var load = () => {
     addSent('PTH 7 first appeared on the 1928 Manitoba Highway Map as a short feeder route connecting Stonewall and Winnipeg.');
@@ -195,13 +121,6 @@ $(function () {
     addSent('The reader should already have some understanding of what is a neural network and in linear algebra before reading this.');
     addSent('I’ve been spending the last few days to understand what is sparse coding, Here are my results!');
   }
-
-  document.obj = Reciever;
-
-  $("#dump").on('click', dump);
-  $("#load").on('click', load);
-
-
 
 });
 

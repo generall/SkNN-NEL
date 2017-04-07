@@ -8,6 +8,7 @@ import spray.json._
 import spray.httpx.SprayJsonSupport._
 import MediaTypes._
 import ml.generall.resolver.dto.{ConceptDescription, ConceptsAnnotation}
+import spray.http.HttpHeaders.RawHeader
 
 
 // we don't implement our route structure directly in the service actor because
@@ -45,7 +46,7 @@ trait MyService extends HttpService {
   import SentenceProtocol._
   import NERProtocol._
 
-  val myRoute: Route =
+  val myRoute: Route = respondWithHeader(RawHeader("Access-Control-Allow-Origin", "*")) {
     path("1") {
       get {
         complete(Sentence("test").toJson.prettyPrint)
@@ -63,4 +64,5 @@ trait MyService extends HttpService {
     } ~ pathPrefix("public") {
       getFromDirectory("./public")
     }
+  }
 }
