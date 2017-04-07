@@ -11,7 +11,6 @@ $(function () {
     return $.ajax({
       type: type,
       url: addr,
-      crossDomain: true,
       data: isJson ? JSON.stringify(data) : data,
       contentType: (isJson ? "application/json;" : "plain/text;") + " charset=utf-8",
       dataType: "json"

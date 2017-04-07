@@ -46,7 +46,10 @@ trait MyService extends HttpService {
   import SentenceProtocol._
   import NERProtocol._
 
-  val myRoute: Route = respondWithHeader(RawHeader("Access-Control-Allow-Origin", "*")) {
+  val myRoute: Route = respondWithHeaders(
+    RawHeader("Access-Control-Allow-Origin", "*"),
+    RawHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
+  ) {
     path("1") {
       get {
         complete(Sentence("test").toJson.prettyPrint)
