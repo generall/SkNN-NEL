@@ -11,6 +11,7 @@ import ml.generall.resolver.filters.{DummyFilter, SvmFilter}
 import ml.generall.elastic.Chunk
 import ml.generall.nlp._
 import ml.generall.resolver.dto._
+import ml.generall.resolver.tools.Hyperparams
 
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConversions._
@@ -77,7 +78,7 @@ object Builder extends BuilderInterface {
               matchQuery("mentions.resolver", ConceptVariant.WIKILINKS_RESOLVER)
             )
           } scoreMode "Max"
-        } limit 100
+        } limit Hyperparams.SEARCH_LIMIT_MENTION
       }.await(60.seconds)
     }).groupBy(_._1.concepts.head.concept)
       .map({ case (concept, pairs) => calcStat(concept, pairs.map(_._2)) })
@@ -140,7 +141,7 @@ object Builder extends BuilderInterface {
               matchQuery("mentions.resolver", ConceptVariant.WIKILINKS_RESOLVER)
             )
           } scoreMode "Max"
-        } limit 100 // TODO: Hyperparameter
+        } limit Hyperparams.SEARCH_LIMIT_HREF // TODO: Hyperparameter
       }.await(60.seconds)
     }).map(_._1)
   }

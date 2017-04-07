@@ -5,7 +5,7 @@ import ml.generall.ner.elements.{ContextElement, _}
 import ml.generall.ner.{ElementMeasures, Measures, RecoverConcept}
 import ml.generall.nlp.ChunkRecord
 import ml.generall.resolver.dto.{ConceptDescription, ConceptVariant, ConceptsAnnotation}
-import ml.generall.resolver.tools.Tools
+import ml.generall.resolver.tools.{Hyperparams, Tools}
 import ml.generall.sknn.SkNN
 import ml.generall.sknn.model.storage.PlainAverageStorage
 import ml.generall.sknn.model.storage.elements.BaseElement
@@ -89,7 +89,7 @@ class SentenceAnalizer {
 
   val logger = Logger("Analyzer")
 
-  val contextSize = 5
+  val contextSize = Hyperparams.CONTEXT_SIZE
   val searcher = Searcher
   val parser = LocalCoreNLP
   val exampleBuilder = new ExamplesBuilder
@@ -230,6 +230,8 @@ class SentenceAnalizer {
       */
     val (target: List[ContextElement], selectedIds: List[Int]) = convertToContext(objects).unzip
 
+    if(target.isEmpty)
+      return Nil
     /**
       * All concepts with disambiguation
       */
