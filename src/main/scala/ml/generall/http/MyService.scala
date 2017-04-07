@@ -63,7 +63,10 @@ trait MyService extends HttpService {
             complete(res)
           }
         }
-      }
+      } ~
+        options {
+          complete("This is an OPTIONS request.")
+        }
     } ~ pathPrefix("public") {
       getFromDirectory("./public")
     }
