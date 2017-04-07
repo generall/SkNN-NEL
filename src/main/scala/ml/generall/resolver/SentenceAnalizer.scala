@@ -1,7 +1,8 @@
 package ml.generall.resolver
 
+import com.typesafe.scalalogging.Logger
 import ml.generall.ner.elements.{ContextElement, _}
-import ml.generall.ner.{ElementMeasures, RecoverConcept}
+import ml.generall.ner.{ElementMeasures, Measures, RecoverConcept}
 import ml.generall.nlp.ChunkRecord
 import ml.generall.resolver.dto.{ConceptDescription, ConceptVariant, ConceptsAnnotation}
 import ml.generall.resolver.tools.Tools
@@ -86,6 +87,7 @@ object SentenceAnalizer {
   */
 class SentenceAnalizer {
 
+  val logger = Logger("Analyzer")
 
   val contextSize = 5
   val searcher = Searcher
@@ -158,18 +160,23 @@ class SentenceAnalizer {
   def updateStates(trainSet: List[List[ContextElement]], categoryWeights: scala.collection.Map[String, Double]): Unit = {
     trainSet.foreach(seq => {
       seq.foreach(elem => {
-        var wikilinksFeatures: Option[Map[String, Double]] = None
-        val localMap: mutable.Map[String, Double] = mutable.Map().withDefaultValue(0.0)
-        elem.foldLeft(localMap) {
-          case (acc, x: OntologyElement) =>
-            if (x.weight == 1.0) wikilinksFeatures = Some(x.features)
-            OntologyElement.joinFeatures(acc, x.features)
-          case (acc, _) => acc
-        }
-        val (state, _) = wikilinksFeatures.getOrElse(localMap).maxBy { case (k, v) => v * categoryWeights.getOrElse(k, 0.0) }
-        elem.label = state
+        elem.label = getElementState(elem, categoryWeights)
       })
     })
+  }
+
+  def getElementState(element: ContextElement, categoryWeights: scala.collection.Map[String, Double]): String = {
+    var wikilinksFeatures: Option[Map[String, Double]] = None
+    val localMap: mutable.Map[String, Double] = mutable.Map().withDefaultValue(0.0)
+    element.foldLeft(localMap) {
+      case (acc, x: OntologyElement) =>
+        if (x.weight == 1.0) wikilinksFeatures = Some(x.features)
+        OntologyElement.joinFeatures(acc, x.features)
+      case (acc, _) => acc
+    }
+    val (state, _) = wikilinksFeatures.getOrElse(localMap).maxBy { case (k, v) => v * categoryWeights.getOrElse(k, 0.0) }
+
+    state
   }
 
   type SkNNClassifier = SkNN[BaseElement, SkNNNode[BaseElement]]
@@ -195,7 +202,7 @@ class SentenceAnalizer {
   val filterNodes: (BaseElement, SkNNNode[BaseElement]) => Boolean = (elem: BaseElement, node: SkNNNode[BaseElement]) => {
     elem match {
       case contextElement: ContextElement => contextElement.mainElement match {
-        case x: MultiElement[_] => x.exists{
+        case x: MultiElement[_] => x.exists {
           case y: WeightedSetElement => y.features.contains(node.label)
         }
         case _ => true
@@ -205,7 +212,7 @@ class SentenceAnalizer {
   }
 
   def analyse(sentence: String): List[ConceptsAnnotation] = {
-    
+
     // exampleBuilder.builder = BuilderMockup // TODO: remove this! For test only
 
     /**
@@ -232,7 +239,7 @@ class SentenceAnalizer {
       * Prepare training set from disambiguation
       */
 
-    val trainingSet: List[List[ContextElement]] = getTrainingSet(conceptsToLearn)
+    val trainingSet: List[List[ContextElement]] = Tools.time(getTrainingSet(conceptsToLearn), "getTrainingSet")
 
     /**
       * Update of the states
@@ -253,14 +260,14 @@ class SentenceAnalizer {
       * Tag sequence, return possible combinations with weight
       * < List[(List[Node], Double)] >
       */
-    val res = sknn.tag(target, 1)(filterNodes)
+    val res = Tools.time(sknn.tag(target, 1)(filterNodes), "tag")
 
     val relevantChunks: List[(Int, Int)] = selectedIds.map(id => annotations(id))
     val relevantObjects = selectedIds.map(id => objects(id))
 
     val recoveredResult1 = RecoverConcept.recover(target, model.initNode, res.head._1)
 
-    relevantChunks.zip(recoveredResult1).map { case ((from, to), node) => ConceptsAnnotation(
+    val resAnnotations = relevantChunks.zip(recoveredResult1).map { case ((from, to), node) => ConceptsAnnotation(
       fromPos = from,
       toPos = to,
       concepts = List(ConceptDescription(
@@ -270,6 +277,14 @@ class SentenceAnalizer {
     )
     }
 
+    logger.info("Dist calls: " + Measures.count)
+    logger.info("Dist foo calls: " + ElementMeasures.count)
+    logger.info("Model nodes: " + model.nodes.size)
+    logger.info("Model elements: " + model.nodes.foldLeft(0)( (acc, node) => acc + node._2.asInstanceOf[SkNNNodeImpl[_,_]].storages.size))
+    logger.info("OntologyElement count: " + SentenceAnalizer.total)
+    logger.info("OntologyElement cache hits: " + SentenceAnalizer.hits)
+
+    resAnnotations
   }
 
 }

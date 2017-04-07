@@ -142,7 +142,7 @@ class SentenceAnalizerTest extends FunSuite {
 
     val analyzer = new SentenceAnalizer
 
-    //analyzer.exampleBuilder.builder = BuilderMockup
+    analyzer.exampleBuilder.builder = BuilderMockup
 
     val sentence = "Titanic hit iceberg"
     //val sentence = "Cameron made Titanic"

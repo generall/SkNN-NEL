@@ -31,6 +31,10 @@ libraryDependencies += "org.typelevel" %% "scalaz-outlaws" % "0.2"
 libraryDependencies += "com.sksamuel.elastic4s" %% "elastic4s-core" % "5.2.8"
 libraryDependencies += "com.sksamuel.elastic4s" %% "elastic4s-tcp" % "5.2.8"
 
+libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7"
+
+libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0"
+
 libraryDependencies ++= {
   val akkaV = "2.3.9"
   val sprayV = "1.3.3"
