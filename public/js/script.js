@@ -22,7 +22,7 @@ $(function () {
   }
 
   function callNEL(sentence){
-    var addr = "http://localhost:4567/analyze";
+    var addr = "/analyze";
     var data = {
         s: sentence
     };
