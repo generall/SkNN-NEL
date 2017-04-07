@@ -46,7 +46,7 @@ $(function () {
             var beforeText = sentence.substring( startPos, x.fromPos );
             var text = sentence.substring( x.fromPos, x.toPos );
             console.log(x)
-            var link = $("<a>").attr('href', x.concepts[0].concept ).text(text).get(0).outerHTML;
+            var link = $("<a>").attr('href', x.concepts[0].concept ).attr('target', '_blank').text(text).get(0).outerHTML;
             newSent += beforeText + link;
             startPos = x.toPos;
         } )
