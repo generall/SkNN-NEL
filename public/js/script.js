@@ -66,7 +66,8 @@ $(function () {
     'Titanic hit iceberg in the Atlantic ocean',
     'James Cameron made Titanic in 1997',
     'Scala source code is intended to be compiled to Java bytecode, so that the resulting executable code runs on a Java virtual machine',
-    'In his short story "Evidence" Asimov lets his recurring character Dr. Susan Calvin expound a moral basis behind the Three Laws.'
+    'In his short story "Evidence" Asimov lets his recurring character Dr. Susan Calvin expound a moral basis behind the Three Laws.',
+    'A Berlin robber armed only with a barbeque fork attempted to hold up a supermarket on Thursday night.'
   ]
 
 

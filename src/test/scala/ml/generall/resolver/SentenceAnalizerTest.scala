@@ -144,7 +144,7 @@ class SentenceAnalizerTest extends FunSuite {
 
     // analyzer.exampleBuilder.builder = BuilderMockup
 
-    val sentence = "AI for robot"
+    val sentence = "A Berlin robber armed only with a barbeque fork attempted to hold up a supermarket on Thursday night."
     //val sentence = "Titanic hit iceberg"
     //val sentence = "Cameron made Titanic"
 

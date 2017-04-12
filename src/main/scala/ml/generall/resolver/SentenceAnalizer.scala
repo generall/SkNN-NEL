@@ -94,14 +94,31 @@ class SentenceAnalizer {
   val parser = LocalCoreNLP
   val exampleBuilder = new ExamplesBuilder
 
+  val NERRemapping = Map(
+    "NUMBER" -> "O",
+    "DATE" -> "O",
+    "TIME" -> "O"
+  )
+
   def prepareSentence(sentence: String): (List[TrainObject], List[(Int, Int)]) = {
     val parseRes = Tools.time(parser.process(sentence), "parser")
 
     val groups = parseRes.zipWithIndex
-      .groupBy({ case (record, _) => (record.parseTag, 0 /*record.ner*/ , record.groupId) })
+      .groupBy({ case (record, _) => (record.parseTag, /* NERRemapping.getOrElse(record.ner, record.ner), */ record.groupId) })
       .toList
-      .sortBy(x => x._2.head._2)
-      .map(pair => (s"${pair._1._1}" /* _${pair._1._2} */ , pair._2.map(_._1))) // creation of state
+      .sortBy(x => x._2.head._2 /* first id of chunk */)
+      .map {
+        case ((tag, _), chunksWithIdx) =>
+          val chunks = chunksWithIdx.map(_._1)
+          val hasNer = chunks.exists( chunk => NERRemapping.getOrElse(chunk.ner, chunk.ner) != "O" )
+          val filteredChunks = if (hasNer)
+            chunks.filter(x => x.ner != "O")
+          else
+            chunks
+          (tag, filteredChunks)
+      }
+
+      //.map(pair => (s"${pair._1._1}" /* _${pair._1._2} */ , pair._2.map(_._1))) // creation of state
 
     val annotations: List[(Int, Int)] = groups.map { case (_, chunks) => {
       val from = chunks.head.beginPos
@@ -230,7 +247,7 @@ class SentenceAnalizer {
       */
     val (target: List[ContextElement], selectedIds: List[Int]) = convertToContext(objects).unzip
 
-    if(target.isEmpty)
+    if (target.isEmpty)
       return Nil
     /**
       * All concepts with disambiguation
@@ -282,7 +299,7 @@ class SentenceAnalizer {
     logger.info("Dist calls: " + Measures.count)
     logger.info("Dist foo calls: " + ElementMeasures.count)
     logger.info("Model nodes: " + model.nodes.size)
-    logger.info("Model elements: " + model.nodes.foldLeft(0)( (acc, node) => acc + node._2.asInstanceOf[SkNNNodeImpl[_,_]].storages.size))
+    logger.info("Model elements: " + model.nodes.foldLeft(0)((acc, node) => acc + node._2.asInstanceOf[SkNNNodeImpl[_, _]].storages.size))
     logger.info("OntologyElement count: " + SentenceAnalizer.total)
     logger.info("OntologyElement cache hits: " + SentenceAnalizer.hits)
 
