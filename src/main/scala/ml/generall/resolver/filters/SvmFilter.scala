@@ -19,7 +19,7 @@ object SvmFilter extends MentionFilter {
   val nerFilter = Set("TIME", "DATE")
 
   override def filter(records: List[ChunkRecord], weights: List[Double]): Boolean = {
-    if ( records.exists(token => nerFilter.contains(token.ner)) )
+    if (records.exists(token => nerFilter.contains(token.ner)))
       return false
     svm.classify(new DenseInstance(Array(weights.sum / records.size, weights.max, records.size))) == "up"
   }

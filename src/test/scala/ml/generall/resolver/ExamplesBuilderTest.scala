@@ -86,4 +86,19 @@ class ExamplesBuilderTest extends FunSuite with BeforeAndAfterEach {
     println("-----------")
     icebergSentences.foreach(x => println(x.sent))
   }
+
+
+  test("testGetMentionsBarbeque") {
+    val mention = "a barbeque fork"
+    val vars = Builder.searchMention(mention, mustWords = List("barbeque")).stats
+
+    vars.foreach(println)
+  }
+
+  test("testGetMentionsThreeLaw") {
+    val mention = "the Three Laws"
+    val vars = Builder.searchMention(mention, mustWords = List("law")).stats
+
+    vars.foreach(println)
+  }
 }

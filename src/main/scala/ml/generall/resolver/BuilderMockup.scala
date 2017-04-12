@@ -16,7 +16,7 @@ object BuilderMockup extends BuilderInterface{
 
   val hrefMocks: Map[String, List[EnrichedSentence]] = SaveTools.load[HrefStore](this.getClass.getResourceAsStream("/href_mockup")).toMap
 
-  override def searchMention(mention: String, leftContext: String, rightContext: String): MentionSearchResult = mentionMocks(mention)
+  override def searchMention(mention: String, leftContext: String, rightContext: String, mustWords: List[String]): MentionSearchResult = mentionMocks(mention)
 
   override def searchMentionsByHref(href: String, leftContext: String, rightContext: String): Seq[EnrichedSentence] = hrefMocks(href)
 }

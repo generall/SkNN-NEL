@@ -31,7 +31,7 @@ trait BuilderInterface {
     mentionFilter.filter(tokens, weights)
   }
 
-  def searchMention(mention: String, leftContext: String = "", rightContext: String = ""): MentionSearchResult
+  def searchMention(mention: String, leftContext: String = "", rightContext: String = "", mustWords: List[String] = Nil): MentionSearchResult
 
   def searchMentionsByHref(href: String, leftContext: String = "", rightContext: String = ""): Seq[EnrichedSentence]
 }
@@ -51,7 +51,7 @@ object Builder extends BuilderInterface {
     * @param rightContext right context
     * @return concept variants
     */
-  override def searchMention(mention: String, leftContext: String = "", rightContext: String = ""): MentionSearchResult = {
+  override def searchMention(mention: String, leftContext: String = "", rightContext: String = "", mustWords: List[String] = Nil): MentionSearchResult = {
     implicit object MentionHitAs extends HitReader[EnrichedMention] {
 
       override def read(hit: Hit): Either[Throwable, EnrichedMention] = {
@@ -65,6 +65,8 @@ object Builder extends BuilderInterface {
         }
       }
     }
+
+    val mustWordRegexps = mustWords.map(mustWord => ("(?i)" + mustWord).r)
 
     val variants = searcher.customSearch(client => {
       client.execute {
@@ -81,7 +83,19 @@ object Builder extends BuilderInterface {
         } limit Hyperparams.SEARCH_LIMIT_MENTION
       }.await(60.seconds)
     }).groupBy(_._1.concepts.head.concept)
-      .map({ case (concept, pairs) => calcStat(concept, pairs.map(_._2)) })
+      .map {
+        case (concept, pairs) =>
+          (concept, pairs
+            .filter {
+              case (enrichedMention, _) =>
+                mustWordRegexps.forall(mustWordRegex => mustWordRegex.findFirstIn(enrichedMention.text).nonEmpty)
+            }
+            .map(_._2))
+      }
+      .filter(_._2.nonEmpty)
+      .map {
+        case (concept, pairs) => calcStat(concept, pairs)
+      }
 
     new MentionSearchResult(variants)(filterResult)
   }
@@ -272,9 +286,11 @@ class ExamplesBuilder {
       state match {
         case pattern(_) =>
           val text = tokens.map(_.word).mkString(" ")
-          val weights = tokens.map(builder.weightFu)
+          val weightedTokens = tokens.map(x => (x, builder.weightFu(x)))
+          val weights = weightedTokens.map(_._2)
+          val mostValuableWords = weightedTokens.sortBy(-_._2).take(tokens.size / 2).map(_._1.lemma)
           val variants = if (builder.mentionFilter.filter(tokens, weights))
-            builder.searchMention(text).stats
+            builder.searchMention(text, mustWords = mostValuableWords).stats
           else {
             if (isDebug()) println(s"Filter mention: $text")
             Nil
