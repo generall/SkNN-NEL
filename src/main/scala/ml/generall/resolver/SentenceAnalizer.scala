@@ -110,7 +110,7 @@ class SentenceAnalizer {
       .map {
         case ((tag, _), chunksWithIdx) =>
           val chunks = chunksWithIdx.map(_._1)
-          val hasNer = chunks.exists( chunk => NERRemapping.getOrElse(chunk.ner, chunk.ner) != "O" )
+          val hasNer = chunks.exists(chunk => NERRemapping.getOrElse(chunk.ner, chunk.ner) != "O")
           val filteredChunks = if (hasNer)
             chunks.filter(x => x.ner != "O")
           else
@@ -118,7 +118,7 @@ class SentenceAnalizer {
           (tag, filteredChunks)
       }
 
-      //.map(pair => (s"${pair._1._1}" /* _${pair._1._2} */ , pair._2.map(_._1))) // creation of state
+    //.map(pair => (s"${pair._1._1}" /* _${pair._1._2} */ , pair._2.map(_._1))) // creation of state
 
     val annotations: List[(Int, Int)] = groups.map { case (_, chunks) => {
       val from = chunks.head.beginPos
@@ -281,19 +281,39 @@ class SentenceAnalizer {
       */
     val res = Tools.time(sknn.tag(target, 1)(filterNodes), "tag")
 
-    val relevantChunks: List[(Int, Int)] = selectedIds.map(id => annotations(id))
     val relevantObjects = selectedIds.map(id => objects(id))
+    val relevantChunks: List[(Int, Int)] = selectedIds.map(id => annotations(id))
 
-    val recoveredResult1 = RecoverConcept.recover(target, model.initNode, res.head._1)
+    val resAnnotations = if (res.nonEmpty) {
 
-    val resAnnotations = relevantChunks.zip(recoveredResult1).map { case ((from, to), node) => ConceptsAnnotation(
-      fromPos = from,
-      toPos = to,
-      concepts = List(ConceptDescription(
-        concept = node.label,
-        params = Map()
-      ))
-    )
+      val recoveredResult1 = RecoverConcept.recover(target, model.initNode, res.head._1)
+
+      relevantChunks.zip(recoveredResult1).map {
+        case ((from, to), node) => ConceptsAnnotation(
+          fromPos = from,
+          toPos = to,
+          concepts = List(ConceptDescription(
+            concept = node.label,
+            params = Map()
+          ))
+        )
+      }
+
+    } else {
+
+      logger.warn("Cant process sentence")
+
+      relevantChunks.zip(objects).map {
+        case ((from, to), targetObject) => ConceptsAnnotation(
+          fromPos = from,
+          toPos = to,
+          concepts = List(ConceptDescription(
+            concept = targetObject.concepts.maxBy(x => x.getWeight).concept,
+            params = Map()
+          ))
+        )
+      }
+
     }
 
     logger.info("Dist calls: " + Measures.count)

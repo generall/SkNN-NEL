@@ -155,7 +155,7 @@ object Builder extends BuilderInterface {
               matchQuery("mentions.resolver", ConceptVariant.WIKILINKS_RESOLVER)
             )
           } scoreMode "Max"
-        } limit Hyperparams.SEARCH_LIMIT_HREF // TODO: Hyperparameter
+        } limit Hyperparams.SEARCH_LIMIT_HREF
       }.await(60.seconds)
     }).map(_._1)
   }
