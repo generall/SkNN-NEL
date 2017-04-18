@@ -36,7 +36,7 @@ object OntologyElement {
   val threshold = 0.5 // TODO: hyper parameter
 
   def constructConcept(concept: Concept, _threshold: Double = threshold): Concept = {
-    val traversal = factory.constructConcept(concept.categories, _threshold)
+    val traversal = factory.constructConceptWeighted(concept.categories, _threshold)
     concept.ontology = traversal
     concept
   }
