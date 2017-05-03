@@ -15,6 +15,8 @@ object Boot extends App {
   // create and start our service actor
   val service = system.actorOf(Props[MyServiceActor], "demo-service")
 
+  Worker.analyse("Titanic hit iceberg") // heat up system
+
   implicit val timeout = Timeout(1000.seconds)
   // start a new HTTP server on port 8080 with our service actor as the handler
   IO(Http) ? Http.Bind(service, interface = "localhost", port = 4567)
