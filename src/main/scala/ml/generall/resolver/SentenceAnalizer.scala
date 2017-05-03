@@ -14,6 +14,7 @@ import ml.generall.sknn.model.{Model, SkNNNode, SkNNNodeImpl}
 import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
+import scala.concurrent.ExecutionContext.Implicits.global
 
 
 object SentenceAnalizer {
