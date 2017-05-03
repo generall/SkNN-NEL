@@ -158,7 +158,7 @@ class SentenceAnalizer {
           exampleBuilder.build(x._2, x._1, x._3)
         }).map(x => x.filter(_.nonEmpty).map(convertToContext))
       )
-    Future.sequence(futures).result(Duration.Inf).flatten.map(_.unzip._1)
+    Await.result(Future.sequence(futures), Duration.Inf).flatten.map(_.unzip._1)
   }
 
   def filterSequence(seq: List[ContextElement]): List[(ContextElement, Int)] = seq.zipWithIndex.filter(filterSequencePredicate)
