@@ -12,6 +12,8 @@ import ml.generall.sknn.model.storage.elements.BaseElement
 import ml.generall.sknn.model.{Model, SkNNNode, SkNNNodeImpl}
 
 import scala.collection.mutable
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 
 
 object SentenceAnalizer {
@@ -148,13 +150,15 @@ class SentenceAnalizer {
   /**
     * Prepare training set for disambiguation
     */
-  def getTrainingSet(conceptsToLearn: List[(String, String, String)]): List[List[ContextElement]] = conceptsToLearn
-    .par
-    .flatMap(x => exampleBuilder.build(x._2, x._1, x._3))
-    .filter(_.nonEmpty)
-    .map(convertToContext)
-    .map(_.unzip._1)
-    .toList
+  def getTrainingSet(conceptsToLearn: List[(String, String, String)]): List[List[ContextElement]] = {
+    val futures = conceptsToLearn
+      .map(x =>
+        Future({
+          exampleBuilder.build(x._2, x._1, x._3)
+        }).map(x => x.filter(_.nonEmpty).map(convertToContext))
+      )
+    Future.sequence(futures).result(Duration.Inf).flatten.map(_.unzip._1)
+  }
 
   def filterSequence(seq: List[ContextElement]): List[(ContextElement, Int)] = seq.zipWithIndex.filter(filterSequencePredicate)
 
