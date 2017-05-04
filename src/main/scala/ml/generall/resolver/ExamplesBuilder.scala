@@ -290,7 +290,7 @@ class ExamplesBuilder {
           val weights = weightedTokens.map(_._2)
           val mostValuableWords = weightedTokens.sortBy(-_._2).take(tokens.size / 2).map(_._1.lemma)
           val variants = if (builder.mentionFilter.filter(tokens, weights))
-            builder.searchMention(text, mustWords = mostValuableWords).stats
+            tools.Tools.time(builder.searchMention(text, mustWords = mostValuableWords).stats, s"Search for $text")
           else {
             if (isDebug()) println(s"Filter mention: $text")
             Nil

@@ -11,9 +11,12 @@ object Tools {
 
   def time[R](block: => R, msg: String = ""): R = {
     val t0 = System.currentTimeMillis()
-    val result = block    // call-by-name
+    val result = block // call-by-name
     val t1 = System.currentTimeMillis()
-    logger.info("Elapsed time: " + (t1 - t0) + s"ms $msg" )
+    val elapsed = t1 - t0
+    if (elapsed > 500) {
+      logger.info(s"Elapsed time: ${elapsed}ms $msg")
+    }
     result
   }
 }
