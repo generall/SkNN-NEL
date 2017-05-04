@@ -309,7 +309,7 @@ class SentenceAnalizer {
 
       logger.warn("Cant process sentence")
 
-      relevantChunks.zip(objects).map {
+      relevantChunks.zip(objects).filter( _._2.concepts.nonEmpty ).map {
         case ((from, to), targetObject) => ConceptsAnnotation(
           fromPos = from,
           toPos = to,
