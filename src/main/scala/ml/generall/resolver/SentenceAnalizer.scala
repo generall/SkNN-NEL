@@ -243,9 +243,9 @@ class SentenceAnalizer {
     SentenceAnalizer.clearCache
 
     /**
-      * Prepare target sentence
+      * Prepare target sentence, searches for possible disambiguation
       */
-    val (objects: List[TrainObject], annotations) = prepareSentence(sentence)
+    val (objects: List[TrainObject], annotations) = Tools.time(prepareSentence(sentence), "prepareSentence")
 
     /**
       * Get context element description
@@ -257,7 +257,7 @@ class SentenceAnalizer {
     /**
       * All concepts with disambiguation
       */
-    val conceptsToLearn: List[(String, String, String)] = SentenceAnalizer.getConceptsToLearn(objects, contextSize)
+    val conceptsToLearn: List[(String, String, String)] = Tools.time(SentenceAnalizer.getConceptsToLearn(objects, contextSize), "getConceptsToLearn")
 
     /**
       * Prepare training set from disambiguation
