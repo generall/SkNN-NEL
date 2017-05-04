@@ -262,8 +262,9 @@ class SentenceAnalizer {
     /**
       * Prepare training set from disambiguation
       */
-
+    logger.info(s"${conceptsToLearn.size} concepts to learn")
     val trainingSet: List[List[ContextElement]] = Tools.time(getTrainingSet(conceptsToLearn), "getTrainingSet")
+
 
     /**
       * Update of the states
