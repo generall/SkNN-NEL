@@ -20,7 +20,7 @@ object SvmFilter extends MentionFilter {
   val posFilter = Set("CC", ",")
 
   override def filter(records: List[ChunkRecord], weights: List[Double]): Boolean = {
-    if (records.size == 1 && posFilter.contains(records.head.pos))
+    if (records.forall(record => posFilter.contains(record.pos)))
       return false
     if (records.exists(token => nerFilter.contains(token.ner)))
       return false
