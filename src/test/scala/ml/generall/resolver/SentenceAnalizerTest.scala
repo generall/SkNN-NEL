@@ -97,7 +97,8 @@ class SentenceAnalizerTest extends FunSuite {
   }
 
   test("testPrepareSentence") {
-    val str = "Titanic crashed into iceberg"
+    //val str = "Titanic crashed into iceberg"
+    val str = "David and Victoria added spice to their marriage"
     val analyzer = new SentenceAnalizer
 
     analyzer.exampleBuilder.builder = BuilderMockup

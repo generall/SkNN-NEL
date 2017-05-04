@@ -17,7 +17,7 @@ object Worker {
     val f = Future({
       analyzer.analyse(sentence)
     })
-    Await.result(f, 2.minutes)
+    Await.result(f, 5.minutes)
   }
 
 }
