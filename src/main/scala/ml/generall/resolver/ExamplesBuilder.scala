@@ -238,10 +238,10 @@ class ExamplesBuilder {
   def build(concept: String, leftContext: String = "", rightContext: String = ""): List[List[TrainObject]] = {
     val searchRes = tools.Tools.time(builder.searchMentionsByHref(concept, leftContext, rightContext), s"searchMentionsByHref for $concept")
 
-    FileLogger.logToFile("/tmp/learning.log", concept)
-    FileLogger.logToFile("/tmp/learning.log", "")
+    //FileLogger.logToFile("/tmp/learning.log", concept)
+    //FileLogger.logToFile("/tmp/learning.log", "")
 
-    searchRes.map(enrichedSentenceToTrain).toList
+    tools.Tools.time(searchRes.map(enrichedSentenceToTrain).toList, "enrichedSentenceToTrain")
   }
 
   /**

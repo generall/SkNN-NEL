@@ -154,9 +154,8 @@ class SentenceAnalizer {
   def getTrainingSet(conceptsToLearn: List[(String, String, String)]): List[List[ContextElement]] = {
     val futures = conceptsToLearn
       .map(x =>
-        Future({
-          exampleBuilder.build(x._2, x._1, x._3)
-        }).map(x => x.filter(_.nonEmpty).map(convertToContext))
+        Future(exampleBuilder.build(x._2, x._1, x._3))
+          .map(x => x.filter(_.nonEmpty).map(convertToContext))
       )
     Await.result(Future.sequence(futures), Duration.Inf).flatten.map(_.unzip._1)
   }
