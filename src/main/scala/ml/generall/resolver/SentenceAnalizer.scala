@@ -155,7 +155,7 @@ class SentenceAnalizer {
     val futures = conceptsToLearn
       .map(x =>
         Future(exampleBuilder.build(x._2, x._1, x._3))
-          .map(x => x.filter(_.nonEmpty).map(convertToContext))
+          .map(x => Tools.time(x.filter(_.nonEmpty).map(convertToContext), "convertToContext"))
       )
     Await.result(Future.sequence(futures), Duration.Inf).flatten.map(_.unzip._1)
   }
@@ -308,7 +308,7 @@ class SentenceAnalizer {
 
       logger.warn("Cant process sentence")
 
-      relevantChunks.zip(objects).filter( _._2.concepts.nonEmpty ).map {
+      relevantChunks.zip(objects).filter(_._2.concepts.nonEmpty).map {
         case ((from, to), targetObject) => ConceptsAnnotation(
           fromPos = from,
           toPos = to,
