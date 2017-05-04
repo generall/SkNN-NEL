@@ -5,8 +5,9 @@ package ml.generall.resolver.tools
   */
 object Hyperparams {
 
-  val SEARCH_LIMIT_MENTION = 100
+  val SEARCH_LIMIT_MENTION = 50
   val SEARCH_LIMIT_HREF = 50
 
   val CONTEXT_SIZE = 3
 }
+0
