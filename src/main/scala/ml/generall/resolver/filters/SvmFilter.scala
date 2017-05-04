@@ -17,8 +17,11 @@ object SvmFilter extends MentionFilter {
   val svm = ois.readObject.asInstanceOf[LibSVM]
 
   val nerFilter = Set("TIME", "DATE")
+  val posFilter = Set("CC", ",")
 
   override def filter(records: List[ChunkRecord], weights: List[Double]): Boolean = {
+    if (records.size == 1 && posFilter.contains(records.head.pos))
+      return false
     if (records.exists(token => nerFilter.contains(token.ner)))
       return false
     svm.classify(new DenseInstance(Array(weights.sum / records.size, weights.max, records.size))) == "up"
