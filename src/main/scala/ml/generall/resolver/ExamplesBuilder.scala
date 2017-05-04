@@ -281,7 +281,7 @@ class ExamplesBuilder {
     */
   def makeTrain(groups: Iterable[(String /* state */ , List[ChunkRecord])]): List[TrainObject] = {
     val pattern = "^(NP.*)".r
-    groups.map(group => {
+    groups.par.map(group => {
       val (state, tokens) = group
       state match {
         case pattern(_) =>
