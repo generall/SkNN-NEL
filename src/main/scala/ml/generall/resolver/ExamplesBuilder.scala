@@ -236,7 +236,7 @@ class ExamplesBuilder {
     * @return List of train examples converted to TrainObject
     */
   def build(concept: String, leftContext: String = "", rightContext: String = ""): List[List[TrainObject]] = {
-    val searchRes = builder.searchMentionsByHref(concept, leftContext, rightContext)
+    val searchRes = tools.Tools.time(builder.searchMentionsByHref(concept, leftContext, rightContext), s"searchMentionsByHref for $concept")
 
     FileLogger.logToFile("/tmp/learning.log", concept)
     FileLogger.logToFile("/tmp/learning.log", "")
