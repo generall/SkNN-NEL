@@ -10,4 +10,3 @@ object Hyperparams {
 
   val CONTEXT_SIZE = 3
 }
-0
