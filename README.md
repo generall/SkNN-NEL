@@ -1,9 +1,9 @@
-# SkNN-NER
+# SkNN-NEL
 Implementation of named entity disambiguation and linking with usage of SkNN algorithm
 
 DBPedia categories hierarchy used as words representation
 
-# NER resolving example
+# NEL resolving example
 
 Training set:
 ```
